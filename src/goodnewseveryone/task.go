@@ -84,12 +84,20 @@ func (this Task) String() string {
 	return fmt.Sprintf("%v --%v-> %v", this.Src, this.Type, this.Dst)
 }
 
-func (this Task) NewCommand() *command {
+func (this Task) NewCommand(locations locations) (*command, error) {
+	src, ok := locations[this.Src]
+	if !ok {
+		return nil, errInvalidLocation
+	}
+	dst, ok := locations[this.Dst]
+	if !ok {
+		return nil, errInvalidLocation
+	}
 	switch this.Type {
 	case Sync:
-		return newSyncCommand(this.Src, this.Dst)
+		return newSyncCommand(src.GetLocal(), dst.GetLocal()), nil
 	case Backup:
-		return newBackupCommand(this.Src, this.Dst)
+		return newBackupCommand(src.GetLocal(), dst.GetLocal()), nil
 	}
 	panic("unreachable")
 }

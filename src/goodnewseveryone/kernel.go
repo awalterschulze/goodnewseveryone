@@ -55,12 +55,19 @@ func (this *kernel) run(log Log, command *command) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	this.Lock()
+	this.running = nil
+	this.Unlock()
 	return string(output), err
 }
 
 func (this *kernel) overrun(log Log, command *command) {
 	this.Lock()
 	defer this.Unlock()
+	if command == nil {
+		return
+	}
 	this.running = command
 	this.running.run(log)
+	this.running = nil
 }

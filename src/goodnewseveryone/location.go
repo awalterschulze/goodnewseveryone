@@ -71,6 +71,7 @@ type Location interface {
 	Located(log Log, output string) bool
 	NewMountCommand() *command
 	NewUmountCommand() *command
+	GetLocal() string
 }
 
 type RemoteLocationType string
@@ -145,6 +146,10 @@ func (this *RemoteLocation) NewUmountCommand() *command {
 	panic("unreachable")
 }
 
+func (this *RemoteLocation) GetLocal() string {
+	return this.Local
+}
+
 func (this *RemoteLocation) String() string {
 	return "REMOTE=" + this.Mac + "-" + string(this.Type) + "//" + this.Remote
 }
@@ -183,5 +188,9 @@ func (this *LocalLocation) NewMountCommand() *command {
 
 func (this *LocalLocation) NewUmountCommand() *command {
 	return nil
+}
+
+func (this *LocalLocation) GetLocal() string {
+	return this.Local
 }
 
