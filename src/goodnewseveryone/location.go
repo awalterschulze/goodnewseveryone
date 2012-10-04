@@ -12,54 +12,67 @@ import (
 
 var (
 	errDuplicateLocation = errors.New("Duplicate Location")
+	errUnknownLocation = errors.New("Unknown Location")
 )
 
-type locations map[string]Location
+type Locations map[string]Location
 
-func newLocations(log Log, configLoc string) (locations, error) {
-	locations := make(locations)
+func configToLocations(log Log, configLoc string) (Locations, error) {
+	locations := make(Locations)
 	err := filepath.Walk(configLoc, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
+		var loc Location = nil
 		if strings.HasSuffix(path, ".remote.json") {
 			log.Write(fmt.Sprintf("Remote Config: %v", path))
-			loc, err := ConfigToRemoteLocation(path)
+			loc, err = configToRemoteLocation(path)
 			if err != nil {
-				log.Error(err)
 				return err
 			}
-			log.Write(fmt.Sprintf("Location Configured: %v", loc))
-			if _, ok := locations[loc.String()]; ok {
-				log.Error(errDuplicateLocation)
-				return errDuplicateLocation
-			}
-			locations[loc.String()] = loc
+			
 		} else if strings.HasSuffix(path, ".local.json") {
 			log.Write(fmt.Sprintf("Local Config: %v", path))
-			loc, err := ConfigToLocalLocation(path)
+			loc, err = configToLocalLocation(path)
 			if err != nil {
-				log.Error(err)
 				return err
 			}
-			log.Write(fmt.Sprintf("Location Configured: %v", loc))
-			if _, ok := locations[loc.String()]; ok {
-				log.Error(errDuplicateLocation)
-				return errDuplicateLocation
-			}
-			locations[loc.String()] = loc
+		}
+		if loc == nil {
+			return nil
+		}
+		log.Write(fmt.Sprintf("Location Configured: %v", loc))
+		if err := locations.Add(loc); err != nil {
+			return err
 		}
 		return nil
 	})
 	if err != nil {
+		log.Error(err)
 		return nil, err
 	}
 	return locations, nil
 }
 
-func (this locations) String() string {
-	locs := make([]string, 0, len(this))
-	for _, loc := range this {
+func (locations Locations) Remove(loc Location) error {
+	if _, ok := locations[loc.String()]; !ok {
+		return errUnknownLocation
+	}
+	delete(locations, loc.String())
+	return nil
+}
+
+func (locations Locations) Add(loc Location) error {
+	if _, ok := locations[loc.String()]; ok {
+		return errDuplicateLocation
+	}
+	locations[loc.String()] = loc
+	return nil
+}
+
+func (locations Locations) String() string {
+	locs := make([]string, 0, len(locations))
+	for _, loc := range locations {
 		locs = append(locs, loc.String())
 	}
 	return "[" + strings.Join(locs, ", ") + "]"
@@ -67,11 +80,11 @@ func (this locations) String() string {
 
 type Location interface {
 	String() string
-	NewLocateCommand() *command
-	Located(log Log, output string) bool
-	NewMountCommand() *command
-	NewUmountCommand() *command
-	GetLocal() string
+	newLocateCommand() *command
+	located(log Log, output string) bool
+	newMountCommand() *command
+	newUmountCommand() *command
+	getLocal() string
 }
 
 type RemoteLocationType string
@@ -95,7 +108,7 @@ type RemoteLocation struct {
 	Local string
 }
 
-func ConfigToRemoteLocation(filename string) (*RemoteLocation, error) {
+func configToRemoteLocation(filename string) (*RemoteLocation, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -110,11 +123,11 @@ func ConfigToRemoteLocation(filename string) (*RemoteLocation, error) {
 	return remote, nil
 }
 
-func (this *RemoteLocation) NewLocateCommand() *command {
+func (this *RemoteLocation) newLocateCommand() *command {
 	return newNMapCommand(this.IPAddress)
 }
 
-func (this *RemoteLocation) Located(log Log, output string) bool {
+func (this *RemoteLocation) located(log Log, output string) bool {
 	if !strings.Contains(output, "Host is up") {
 		log.Write(fmt.Sprintf("Cannot Locate %v", this))
 		return false
@@ -126,7 +139,7 @@ func (this *RemoteLocation) Located(log Log, output string) bool {
 	return true
 }
 
-func (this *RemoteLocation) NewMountCommand() *command {
+func (this *RemoteLocation) newMountCommand() *command {
 	switch this.Type {
 	case FTP:
 		return newFTPMountCommand(this.IPAddress, this.Remote, this.Local, this.Username, this.Password)
@@ -136,7 +149,7 @@ func (this *RemoteLocation) NewMountCommand() *command {
 	panic("unreachable")
 }
 
-func (this *RemoteLocation) NewUmountCommand() *command {
+func (this *RemoteLocation) newUmountCommand() *command {
 	switch this.Type {
 	case FTP:
 		return newFTPUmountCommand(this.Local)
@@ -146,7 +159,7 @@ func (this *RemoteLocation) NewUmountCommand() *command {
 	panic("unreachable")
 }
 
-func (this *RemoteLocation) GetLocal() string {
+func (this *RemoteLocation) getLocal() string {
 	return this.Local
 }
 
@@ -158,7 +171,7 @@ type LocalLocation struct {
 	Local string
 }
 
-func ConfigToLocalLocation(filename string) (*LocalLocation, error) {
+func configToLocalLocation(filename string) (*LocalLocation, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -174,23 +187,23 @@ func (this *LocalLocation) String() string {
 	return "LOCAL=" + this.Local
 }
 
-func (this *LocalLocation) NewLocateCommand() *command {
+func (this *LocalLocation) newLocateCommand() *command {
 	return nil
 }
 
-func (this *LocalLocation) Located(log Log, output string) bool {
+func (this *LocalLocation) located(log Log, output string) bool {
 	return true
 }
 
-func (this *LocalLocation) NewMountCommand() *command {
+func (this *LocalLocation) newMountCommand() *command {
 	return nil
 }
 
-func (this *LocalLocation) NewUmountCommand() *command {
+func (this *LocalLocation) newUmountCommand() *command {
 	return nil
 }
 
-func (this *LocalLocation) GetLocal() string {
+func (this *LocalLocation) getLocal() string {
 	return this.Local
 }
 

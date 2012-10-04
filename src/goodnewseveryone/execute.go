@@ -18,7 +18,7 @@ func (this *executor) IsRunning() bool {
 	return this.running
 }
 
-func (this *executor) All(kernel *kernel, locations locations, tasks tasks) {
+func (this *executor) All(kernel *kernel, locations Locations, tasks Tasks) {
 	this.Lock()
 	if this.running {
 		return
@@ -31,7 +31,7 @@ func (this *executor) All(kernel *kernel, locations locations, tasks tasks) {
 	this.Unlock()
 }
 
-func (this *executor) all(kernel *kernel, locations locations, tasks tasks) {
+func (this *executor) all(kernel *kernel, locations Locations, tasks Tasks) {
 	log, err := newLog()
 	if err != nil {
 		panic(err)
@@ -46,45 +46,45 @@ func (this *executor) all(kernel *kernel, locations locations, tasks tasks) {
 	}
 }
 
-func (this *executor) one(log Log, kernel *kernel, locations locations, task Task) error {
+func (this *executor) one(log Log, kernel *kernel, locations Locations, task Task) error {
 	if !kernel.ready() {
 		return errPaused
 	}
 	src, ok := locations[task.Src]
 	if !ok {
-		log.Error(errInvalidLocation)
-		return errInvalidLocation
+		log.Error(errUnknownLocation)
+		return errUnknownLocation
 	}
 	dst, ok := locations[task.Dst]
 	if !ok {
-		log.Error(errInvalidLocation)
-		return errInvalidLocation
+		log.Error(errUnknownLocation)
+		return errUnknownLocation
 	}
-	output, err := kernel.run(log, src.NewLocateCommand())
+	output, err := kernel.run(log, src.newLocateCommand())
 	if err != nil {
 		return err
 	}
-	if !src.Located(log, output) {
+	if !src.located(log, output) {
 		return nil
 	}
-	output, err = kernel.run(log, dst.NewLocateCommand())
+	output, err = kernel.run(log, dst.newLocateCommand())
 	if err != nil {
 		return err
 	}
-	if !dst.Located(log, output) {
+	if !dst.located(log, output) {
 		return nil
 	}
-	_, err = kernel.run(log, src.NewMountCommand())
+	_, err = kernel.run(log, src.newMountCommand())
 	if err != nil {
 		return err
 	}
-	defer kernel.overrun(log, src.NewUmountCommand())
-	_, err = kernel.run(log, dst.NewMountCommand())
+	defer kernel.overrun(log, src.newUmountCommand())
+	_, err = kernel.run(log, dst.newMountCommand())
 	if err != nil {
 		return err
 	}
-	defer kernel.overrun(log, dst.NewUmountCommand())
-	t, err := task.NewCommand(locations)
+	defer kernel.overrun(log, dst.newUmountCommand())
+	t, err := task.newCommand(locations)
 	if err != nil {
 		return err
 	}

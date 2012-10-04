@@ -11,41 +11,52 @@ import (
 )
 
 var (
-	errInvalidLocation = errors.New("Specified Location has not been configured")
+	errDuplicateTask = errors.New("Duplicate Task")
+	errUnknownTask = errors.New("Unknown Task")
 )
 
-type tasks []Task
+type Tasks map[string]Task
 
-func newTasks(log Log, locations locations, configLoc string) (tasks, error) {
-	tasks := make(tasks, 0)
+func configToTasks(log Log, configLoc string) (Tasks, error) {
+	tasks := make(Tasks)
 	err := filepath.Walk(configLoc, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if strings.HasSuffix(path, "task.json") {
 			log.Write(fmt.Sprintf("Task Config: %v", path))
-			task, err := ConfigToTask(path)
+			task, err := configToTask(path)
 			if err != nil {
-				log.Error(err)
 				return err
 			}
 			log.Write(fmt.Sprintf("Task Configured: %v", task))
-			tasks = append(tasks, task)
-			if _, ok := locations[task.Src]; !ok {
-				log.Error(errInvalidLocation)
-				return errInvalidLocation
-			}
-			if _, ok := locations[task.Dst]; !ok {
-				log.Error(errInvalidLocation)
-				return errInvalidLocation
+			if err := tasks.Add(task); err != nil {
+				return err
 			}
 		}
 		return nil
 	})
 	if err != nil {
+		log.Error(err)
 		return nil, err
 	}
 	return tasks, nil
+}
+
+func (tasks Tasks) Remove(task Task) error {
+	if _, ok := tasks[task.String()]; !ok {
+		return errUnknownTask
+	}
+	delete(tasks, task.String())
+	return nil
+}
+
+func (tasks Tasks) Add(task Task) error {
+	if _, ok := tasks[task.String()]; ok {
+		return errDuplicateTask
+	}
+	tasks[task.String()] = task
+	return nil
 }
 
 type TaskType string
@@ -65,7 +76,7 @@ type Task struct {
 	Dst string
 }
 
-func ConfigToTask(filename string) (Task, error) {
+func configToTask(filename string) (Task, error) {
 	task := Task{}
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -84,20 +95,20 @@ func (this Task) String() string {
 	return fmt.Sprintf("%v --%v-> %v", this.Src, this.Type, this.Dst)
 }
 
-func (this Task) NewCommand(locations locations) (*command, error) {
+func (this Task) newCommand(locations Locations) (*command, error) {
 	src, ok := locations[this.Src]
 	if !ok {
-		return nil, errInvalidLocation
+		return nil, errUnknownLocation
 	}
 	dst, ok := locations[this.Dst]
 	if !ok {
-		return nil, errInvalidLocation
+		return nil, errUnknownLocation
 	}
 	switch this.Type {
 	case Sync:
-		return newSyncCommand(src.GetLocal(), dst.GetLocal()), nil
+		return newSyncCommand(src.getLocal(), dst.getLocal()), nil
 	case Backup:
-		return newBackupCommand(src.GetLocal(), dst.GetLocal()), nil
+		return newBackupCommand(src.getLocal(), dst.getLocal()), nil
 	}
 	panic("unreachable")
 }

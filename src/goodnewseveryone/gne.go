@@ -6,98 +6,154 @@ import (
 	"sync"
 )
 
-type GNE struct {
-	sync.Mutex
-	Kernel *kernel
-	Locations locations
-	Tasks tasks
-	Executor *executor
-	WaitTime time.Duration
-	NowChan chan time.Time
-	StopChan chan time.Time
-	RestartChan chan time.Time
+type GNE interface {
+	AddLocation(loc Location) error
+	RemoveLocation(loc Location) error
+	GetLocations() Locations
+	AddTask(task Task) error
+	RemoveTask(task Task) error
+	GetTasks() Tasks
+	SetWaitTime(waitTime time.Duration)
+	GetWaitTime() time.Duration
+	Now()
+	Restart()
+	Stop()
+	IsReady() bool
+	IsRunning() bool
+	Start()
 }
 
-func NewGNE(configLocation string) *GNE {
+type gne struct {
+	sync.Mutex
+	kernel *kernel
+	locations Locations
+	tasks Tasks
+	executor *executor
+	waitTime time.Duration
+	nowChan chan time.Time
+	stopChan chan time.Time
+	restartChan chan time.Time
+}
+
+func ConfigToGNE(configLocation string) GNE {
 	startupLog, err := newLog()
 	if err != nil {
 		panic(err)
 	}
-	locations, err := newLocations(startupLog, configLocation)
+	gne := &gne{
+		kernel: newKernel(),
+		executor: newExecutor(),
+		waitTime: 5*time.Minute,
+		nowChan: make(chan time.Time),
+		stopChan: make(chan time.Time),
+		restartChan: make(chan time.Time),
+		tasks: make(Tasks),
+		locations : make(Locations),
+	}
+	locations, err := configToLocations(startupLog, configLocation)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("Locations = %v\n", locations)
-	tasks, err := newTasks(startupLog, locations, configLocation)
+	tasks, err := configToTasks(startupLog, configLocation)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Tasks = %v\n", tasks)
-	return &GNE{
-		Kernel: newKernel(),
-		Locations: locations,
-		Tasks: tasks,
-		Executor: newExecutor(),
-		WaitTime: 5*time.Minute,
-		NowChan: make(chan time.Time),
-		StopChan: make(chan time.Time),
-		RestartChan: make(chan time.Time),
+	for _, l := range locations {
+		err := gne.AddLocation(l)	
+		if err != nil {
+			startupLog.Error(err)
+			panic(err)
+		}
 	}
+	for _, t := range tasks {
+		err := gne.AddTask(t)
+		if err != nil {
+			startupLog.Error(err)
+			panic(err)
+		}
+	}
+	fmt.Printf("Tasks = %v\n", gne.GetTasks())
+	return gne
 }
 
-func Main(configLocation string) {
-	gne := NewGNE(configLocation)
-	go gne.Start()
-	gne.Serve()
+func (this *gne) AddLocation(loc Location) error {
+	return this.locations.Add(loc)
 }
 
-func (this *GNE) SetWaitTime(waitTime time.Duration) {
-	this.WaitTime = waitTime
+func (this *gne) RemoveLocation(loc Location) error {
+	return this.locations.Remove(loc)
 }
 
-func (this *GNE) GetWaitTime() time.Duration {
-	return this.WaitTime
+func (this *gne) GetLocations() Locations {
+	return this.locations
 }
 
-func (this *GNE) Now() {
-	this.NowChan <- time.Now()
+func (this *gne) AddTask(task Task) error {
+	if _, ok := this.locations[task.Src]; !ok {
+		return errUnknownLocation
+	}
+	if _, ok := this.locations[task.Dst]; !ok {
+		return errUnknownLocation
+	}
+	return this.tasks.Add(task)
 }
 
-func (this *GNE) Restart() {
-	this.RestartChan <- time.Now()
+func (this *gne) RemoveTask(task Task) error {
+	return this.tasks.Remove(task)
 }
 
-func (this *GNE) Stop() {
-	this.StopChan <- time.Now()
+func (this *gne) GetTasks() Tasks {
+	return this.tasks
 }
 
-func (this *GNE) IsReady() bool {
-	return this.Kernel.ready()
+func (this *gne) SetWaitTime(waitTime time.Duration) {
+	this.waitTime = waitTime
 }
 
-func (this *GNE) IsRunning() bool {
-	return this.Executor.IsRunning()
+func (this *gne) GetWaitTime() time.Duration {
+	return this.waitTime
 }
 
-func (this *GNE) Start() {
+func (this *gne) Now() {
+	this.nowChan <- time.Now()
+}
+
+func (this *gne) Restart() {
+	this.restartChan <- time.Now()
+}
+
+func (this *gne) Stop() {
+	this.stopChan <- time.Now()
+}
+
+func (this *gne) IsReady() bool {
+	return this.kernel.ready()
+}
+
+func (this *gne) IsRunning() bool {
+	return this.executor.IsRunning()
+}
+
+func (this *gne) Start() {
 	waitChan := time.After(1)
 	for {
 		select {
 		case <- waitChan:
-			if this.Kernel.ready() {
-				this.Executor.All(this.Kernel, this.Locations, this.Tasks)
+			if this.kernel.ready() {
+				this.executor.All(this.kernel, this.locations, this.tasks)
 			}
-		case <- this.NowChan:
-			this.Executor.All(this.Kernel, this.Locations, this.Tasks)
-		case <- this.StopChan:
+		case <- this.nowChan:
+			this.executor.All(this.kernel, this.locations, this.tasks)
+		case <- this.stopChan:
 			stopLog, err := newLog()
 			if err != nil {
 				panic(err)
 			}
-			this.Kernel.stop(stopLog)
-		case <- this.RestartChan:
-			this.Kernel.restart()
+			this.kernel.stop(stopLog)
+		case <- this.restartChan:
+			this.kernel.restart()
 		}
-		waitChan = time.After(this.WaitTime)
+		waitChan = time.After(this.waitTime)
 	}
 }

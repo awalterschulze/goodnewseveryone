@@ -5,6 +5,7 @@ import (
 	"strings"
 	"fmt"
 	"time"
+	"path/filepath"
 )
 
 const DefaultTimeFormat = "2006-01-02T15:04:05Z"
@@ -57,4 +58,51 @@ func (this *log) Output(output []byte) {
 
 func (this *log) Close() {
 	this.f.Close()
+}
+
+type LogFiles []*LogFile
+
+func (this LogFiles) Len() int {
+	return len(this)
+}
+
+func (this LogFiles) Swap(i, j int) {
+	this[i], this[j] = this[j], this[i]
+}
+
+func (this LogFiles) Less(i, j int) bool {
+	return this[i].At.After(this[j].At)
+}
+
+func NewLogFiles(root string) (LogFiles, error) {
+	filenames := []string{}
+	filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+		if strings.HasSuffix(path, ".log") {
+			filenames = append(filenames, path)
+		}
+		return nil
+	})
+	res := make(LogFiles, len(filenames))
+  	for i, filename := range filenames {
+  		l, err := newLogFile(filename)
+  		if err != nil {
+  			return nil, err
+  		}
+  		res[i] = l
+  	}
+  	return res, nil
+}
+
+type LogFile struct {
+	Filename string
+	At time.Time
+}
+
+func newLogFile(filename string) (*LogFile, error) {
+	timeStr := strings.Replace(strings.Replace(filename, "gne-", "", 1), ".log", "", 1)
+	t, err := time.Parse(DefaultTimeFormat, timeStr)
+	if err != nil {
+		return nil, err
+	}
+	return &LogFile{filename, t}, nil
 }
