@@ -91,6 +91,10 @@ func configToTask(filename string) (Task, error) {
 	return task, nil
 }
 
+func NewTask(src string, typ TaskType, dst string) Task {
+	return Task{typ, src, dst}
+}
+
 func (this Task) String() string {
 	return fmt.Sprintf("%v --%v-> %v", this.Src, this.Type, this.Dst)
 }

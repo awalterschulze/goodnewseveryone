@@ -2,6 +2,7 @@ package web
 
 import (
 	gne "goodnewseveryone"
+	"os/exec"
 	"net/http"
 	"fmt"
 	"time"
@@ -17,28 +18,38 @@ import (
 type web struct {
 	gne gne.GNE
 	header *template.Template
-	refresh *template.Template
 	status *template.Template
 	redirectHome *template.Template
+	redirectMan *template.Template
 	waittime *template.Template
 	invalidMinutes *template.Template
+	man *template.Template
+	locations *template.Template
+	tasks *template.Template
+	notification *template.Template
+	addlocal *template.Template
+	addremote *template.Template
+	addtask *template.Template
+	graphnodes *template.Template
+	graphedges *template.Template
 	footer *template.Template
 }
 
 func newWeb(gne gne.GNE) *web {
 	w := &web{gne: gne}
 	w.header = template.Must(template.New("header").Parse(`<html>`))
-	w.refresh = template.Must(template.New("refresh").Parse(
-		`<head><meta http-equiv="Refresh" content="{{.}};url=."></head>
-	`))
 	w.status = template.Must(template.New("status").Parse(`
 		<div>{{if .IsRunning}}Running{{else}}Not Running{{if .IsReady}}<a href="./now">Now</a>{{end}}{{end}}</div>
 		<div>{{if .IsReady}}Ready<a href="./stop">Stop</a>{{else}}Stopped<a href="./restart">Restart</a>{{end}}</div>
 		<div>WaitTime {{.GetWaitTime}}<a href="./waittime">Set</a></div>
+		<div><a href="./man">Task Management</a></div>
 		`))
-	w.redirectHome = template.Must(template.New("redirectHome").Parse(`<html>
-		<head><meta http-equiv="Refresh" content="1;url=../"></head>
-		</html>`))
+	w.redirectHome = template.Must(template.New("redirectHome").Parse(`
+		<head><meta http-equiv="Refresh" content="{{.}};url=../"></head>
+		`))
+	w.redirectMan = template.Must(template.New("redirectHome").Parse(`
+		<head><meta http-equiv="Refresh" content="{{.}};url=../man"></head>
+		`))
 	w.waittime = template.Must(template.New("waittime").Parse(`
 		<a href="../">Back</a>
 		<form action="./waittime" method="get">
@@ -48,6 +59,113 @@ func newWeb(gne gne.GNE) *web {
 		</form>`))
 	w.invalidMinutes = template.Must(template.New("invalidMinutes").Parse(`
 		<div>invalid minutes received {{.}}</div>`))
+	w.man = template.Must(template.New("man").Parse(`
+		<div>Management</div>
+		<div><a href="../">Back</a></div>
+		<div><a href="./addlocal">Add Local Location</a></div>
+		<div><a href="./addremote">Add Remote Location</a></div>
+		<div><a href="./addtask">Add Task</a></div>
+		`))
+	w.locations = template.Must(template.New("locations").Parse(`
+		<div>Locations</div>
+		<table>
+		{{range .}}
+		<tr><td><div>{{.String}}</div></td><td><a href="./removelocation?location={{.String}}">Remove</a></td></tr>
+		{{end}}
+		</table>
+	`))
+	w.tasks = template.Must(template.New("tasks").Parse(`
+		<div>Tasks</div>
+		<table>
+		{{range .}}
+		<tr><td><div>{{.String}}</div></td><td><a href="./removetask?task={{.String}}">Remove</a></td></tr>
+		{{end}}
+		</table>
+		`))
+	w.notification = template.Must(template.New("notification").Parse(`
+		<div>{{.}}</div>
+		`))
+	w.addlocal = template.Must(template.New("addlocal").Parse(`
+		<div><a href="../man">Back</a></div>
+		<form action="./addlocalcall" method="get">
+			<div>Add Local Location</div>
+			Folder<input type="text" name="local" value=""/>
+			<input type="submit" name="submit" value="AddLocal"/>
+		</form>
+		`))
+	w.addremote = template.Must(template.New("addremote").Parse(`
+		<div><a href="../man">Back</a></div>
+		<form action="./addremotecall" method="get">
+			<div>Add Remote Location</div>
+			<table>
+			<tr><td>Type</td>
+			<td><select name="typ"> 
+        		<option value="smb" selected="selected">Samba</option>
+        		<option value="ftp">FTP</option>
+    		</select></td></tr>
+			<tr><td>IP Address</td><td><input type="text" name="ipaddress" value=""/></td></tr>
+			<tr><td>Mac</td><td><input type="text" name="mac" value=""/></td></tr>
+			<tr><td>Username</td><td><input type="text" name="username" value=""/></td></tr>
+			<tr><td>Password</td><td><input type="text" name="password" value=""/></td></tr>
+			<tr><td>Remote Folder</td><td><input type="text" name="remote" value=""/></td></tr>
+			<tr><td>Local Mounted Folder</td><td><input type="text" name="local" value=""/></td></tr>
+			<tr><td><input type="submit" name="submit" value="AddRemote"/></td><td></td></tr>
+			</table>
+		</form>
+		`))
+	w.addtask = template.Must(template.New("addtask").Parse(`
+		<div><a href="../man">Back</a></div>
+		<form action="./addtaskcall" method="get">
+			<table>
+				<tr>
+					<td>
+						Source
+					</td>
+					<td>
+						<select name="src">
+						{{range .}}
+						<option value="{{.String}}">{{.String}}</option>
+						{{end}}
+					</td>
+				</tr>
+				<tr>
+					<td>
+						Type
+					</td>
+					<td>
+						<select name="typ">
+						<option value="sync" selected="selected">Sync</option>
+						<option value="backup" selected="selected">Backup</option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						Destination
+					</td>
+					<td>
+						<select name="dst">
+						{{range .}}
+						<option value="{{.String}}" selected="selected">{{.String}}</option>
+						{{end}}
+					</td>
+				</tr>
+				<tr><td><input type="submit" name="submit" value="AddTask"/></td><td></td></tr>
+			</table>
+		</form>
+		`))
+	w.graphnodes = template.Must(template.New("graphnodes").Parse(`
+		digraph {
+			{{range .}}
+			"{{.String}}";
+			{{end}}
+		`))
+	w.graphedges = template.Must(template.New("graphedges").Parse(`
+			{{range .}}
+			"{{.Src}}" -> "{{.Dst}}" [label="{{.Type}}"];
+			{{end}}
+		}
+		`))
 	w.footer = template.Must(template.New("footer").Parse(`</html>`))
 	return w
 }
@@ -66,25 +184,63 @@ func Serve(gne gne.GNE) {
 	http.HandleFunc("/waittime", func(w http.ResponseWriter, r *http.Request) {
 		this.handleWaittime(w,r)
 	})
+	http.HandleFunc("/man", func(w http.ResponseWriter, r *http.Request) {
+		this.handleMan(w,r)
+	})
+	http.HandleFunc("/removelocation", func(w http.ResponseWriter, r *http.Request) {
+		this.handleRemoveLocation(w,r)
+	})
+	http.HandleFunc("/removetask", func(w http.ResponseWriter, r *http.Request) {
+		this.handleRemoveTask(w,r)
+	})
+	http.HandleFunc("/addlocal", func(w http.ResponseWriter, r *http.Request) {
+		this.handleAddLocal(w,r)
+	})
+	http.HandleFunc("/addlocalcall", func(w http.ResponseWriter, r *http.Request) {
+		this.handleAddLocalCall(w,r)
+	})
+	http.HandleFunc("/addremote", func(w http.ResponseWriter, r *http.Request) {
+		this.handleAddRemote(w,r)
+	})
+	http.HandleFunc("/addremotecall", func(w http.ResponseWriter, r *http.Request) {
+		this.handleAddRemoteCall(w,r)
+	})
+	http.HandleFunc("/addtask", func(w http.ResponseWriter, r *http.Request) {
+		this.handleAddTask(w,r)
+	})
+	http.HandleFunc("/addtaskcall", func(w http.ResponseWriter, r *http.Request) {
+		this.handleAddTaskCall(w,r)
+	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		this.handleStatus(w,r)
 	})
     http.ListenAndServe(":8080", nil)
 }
 
+var (
+	quick = 0
+	slow = 5
+)
+
 func (this *web) handleRestart(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
 	this.gne.Restart()
-	this.redirectHome.Execute(w, nil)
+	this.redirectHome.Execute(w, quick)
+	this.footer.Execute(w, nil)
 }
 
 func (this *web) handleStop(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
 	this.gne.Stop()
-	this.redirectHome.Execute(w, nil)
+	this.redirectHome.Execute(w, quick)
+	this.footer.Execute(w, nil)
 }
 
 func (this *web) handleNow(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
 	this.gne.Now()
-	this.redirectHome.Execute(w, nil)
+	this.redirectHome.Execute(w, quick)
+	this.footer.Execute(w, nil)
 }
 
 func (this *web) handleWaittime(w http.ResponseWriter, r *http.Request) {
@@ -100,6 +256,141 @@ func (this *web) handleWaittime(w http.ResponseWriter, r *http.Request) {
 	}
 	currentMinutes := int(this.gne.GetWaitTime() / time.Minute)
 	this.waittime.Execute(w, currentMinutes)
+	this.footer.Execute(w, nil)
+}
+
+func (this *web) handleMan(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
+	this.man.Execute(w, nil)
+	this.locations.Execute(w, this.gne.GetLocations())
+	this.tasks.Execute(w, this.gne.GetTasks())
+	c := exec.Command("dot", "-Tsvg")
+	in, err := c.StdinPipe()
+	if err != nil {
+		fmt.Fprintf(w, "<div>Os Error = %v</div>", err)
+	} else {
+		go func() { 
+		this.graphnodes.Execute(in, this.gne.GetLocations())
+		this.graphedges.Execute(in, this.gne.GetTasks())
+		in.Close()
+		}()
+		data, err := c.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(w, "<div>Dot Error = %v</div>", err)
+		} else {
+			fmt.Fprintf(w, "%v", string(data))
+		}
+	}
+	this.footer.Execute(w, nil)
+}
+
+func (this *web) handleRemoveLocation(w http.ResponseWriter, r *http.Request) {
+	locationKey := r.FormValue("location")
+	locations := this.gne.GetLocations()
+	location, ok := locations[locationKey]
+	if !ok {
+		this.header.Execute(w, nil)
+		this.redirectMan.Execute(w, slow)
+		this.notification.Execute(w, string("location does not exist"))
+		this.footer.Execute(w, nil)
+		return
+	}
+	err := this.gne.RemoveLocation(location)
+	if err != nil {
+		this.header.Execute(w, nil)
+		this.redirectMan.Execute(w, slow)
+		this.notification.Execute(w, fmt.Sprintf("unable to remove location: %v", err))
+		this.footer.Execute(w, nil)
+	} else {
+		this.redirectMan.Execute(w, quick)
+	}
+}
+
+func (this *web) handleRemoveTask(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
+	taskKey := r.FormValue("task")
+	tasks := this.gne.GetTasks()
+	task, ok := tasks[taskKey]
+	if !ok {
+		this.redirectMan.Execute(w, slow)
+		this.notification.Execute(w, string("task does not exist"))
+	} else {
+		err := this.gne.RemoveTask(task)
+		if err != nil {
+			this.redirectMan.Execute(w, slow)
+			this.notification.Execute(w, fmt.Sprintf("unable to remove task: %v", err))
+		} else {
+			this.redirectMan.Execute(w, quick)
+		}
+	}
+	this.footer.Execute(w, nil)
+}
+
+func (this *web) handleAddLocal(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
+	this.addlocal.Execute(w, nil)
+	this.footer.Execute(w, nil)
+}
+
+func (this *web) handleAddLocalCall(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
+	local := r.FormValue("local")
+	location := gne.NewLocalLocation(local)
+	err := this.gne.AddLocation(location)
+	if err != nil {
+		this.redirectMan.Execute(w, slow)
+		this.notification.Execute(w, fmt.Sprintf("unable to add local location: %v", err))
+	} else {
+		this.redirectMan.Execute(w, quick)
+	}
+	this.footer.Execute(w, nil)
+}
+
+func (this *web) handleAddRemote(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
+	this.addremote.Execute(w, nil)
+	this.footer.Execute(w, nil)
+}
+
+func (this *web) handleAddRemoteCall(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
+	typ := r.FormValue("typ")
+	ipaddress := r.FormValue("ipaddress")
+	mac := r.FormValue("mac")
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+	remote := r.FormValue("remote")
+	local := r.FormValue("local")
+	location := gne.NewRemoteLocation(gne.RemoteLocationType(typ), ipaddress, mac, username, password, remote, local)
+	err := this.gne.AddLocation(location)
+	if err != nil {
+		this.redirectMan.Execute(w, slow)
+		this.notification.Execute(w, fmt.Sprintf("unable to add remote location: %v", err))
+	} else {
+		this.redirectMan.Execute(w, quick)
+	}
+	this.footer.Execute(w, nil)
+}
+
+func (this *web) handleAddTask(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
+	this.addtask.Execute(w, this.gne.GetLocations())
+	this.footer.Execute(w, nil)
+}
+
+func (this *web) handleAddTaskCall(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
+	typ := r.FormValue("typ")
+	src := r.FormValue("src")
+	dst := r.FormValue("dst")
+	task := gne.NewTask(src, gne.TaskType(typ), dst)
+	err := this.gne.AddTask(task)
+	if err != nil {
+		this.redirectMan.Execute(w, slow)
+		this.notification.Execute(w, fmt.Sprintf("unable to add task: %v", err))
+	} else {
+		this.redirectMan.Execute(w, quick)
+	}
 	this.footer.Execute(w, nil)
 }
 
@@ -175,9 +466,8 @@ func (this *web) handleStatus(w http.ResponseWriter, r *http.Request) {
 	min := r.FormValue("min")
 	max := r.FormValue("max")
 	this.header.Execute(w, nil)
-	this.refresh.Execute(w, 5)
+	this.redirectHome.Execute(w, slow)
 	this.status.Execute(w, this.gne)
-	fmt.Fprintf(w, `<a href="./tasks">Task Management</a>`)
 	this.writeLogs(w, min, max)
 	this.footer.Execute(w, nil)
 }

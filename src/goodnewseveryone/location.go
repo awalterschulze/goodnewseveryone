@@ -123,6 +123,18 @@ func configToRemoteLocation(filename string) (*RemoteLocation, error) {
 	return remote, nil
 }
 
+func NewRemoteLocation(typ RemoteLocationType, ipaddress string, mac string, username string, password string, remote string, local string) *RemoteLocation {
+	return &RemoteLocation{
+		typ,
+		ipaddress,
+		mac,
+		username,
+		password,
+		remote,
+		local,
+	}
+}
+
 func (this *RemoteLocation) newLocateCommand() *command {
 	return newNMapCommand(this.IPAddress)
 }
@@ -181,6 +193,10 @@ func configToLocalLocation(filename string) (*LocalLocation, error) {
 		return nil, err
 	}
 	return local, nil
+}
+
+func NewLocalLocation(local string) (*LocalLocation) {
+	return &LocalLocation{local}
 }
 
 func (this *LocalLocation) String() string {
