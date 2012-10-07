@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"time"
 	"path/filepath"
+	"io/ioutil"
 )
 
 const DefaultTimeFormat = "2006-01-02T15:04:05Z"
+const logLineSep = " | "
 
 type log struct {
 	f *os.File
@@ -36,7 +38,7 @@ func (this *log) Write(str string) {
 		ss := strings.Split(line, "\r")
 		for _, s := range ss {
 			if len(strings.TrimSpace(s)) > 0 {
-				str := fmt.Sprintf("%v | %v\n", time.Now().Format(DefaultTimeFormat), s)
+				str := fmt.Sprintf("%v%v%v\n", time.Now().Format(DefaultTimeFormat), logLineSep, s)
 				this.f.Write([]byte(str))
 				fmt.Printf("%v", str)
 			}	
@@ -106,3 +108,41 @@ func newLogFile(filename string) (*LogFile, error) {
 	}
 	return &LogFile{filename, t}, nil
 }
+
+type LogLine struct {
+	At time.Time
+	Line string
+}
+
+type LogContent struct {
+	At time.Time
+	Lines []*LogLine
+}
+
+func (this *LogFile) Open() (*LogContent, error) {
+	content := &LogContent{
+		At: this.At,
+		Lines: make([]*LogLine, 0),
+	}
+	data, err := ioutil.ReadFile(this.Filename)
+	if err != nil {
+		return nil, err
+	}
+	dataStr := string(data)
+	lines := strings.Split(dataStr, "\n")
+	for _, line := range lines {
+		logLine := strings.SplitN(line, logLineSep, 2)
+		if len(logLine) == 2 {
+			t, err := time.Parse(DefaultTimeFormat, logLine[0])
+			if err != nil {
+				return nil, err
+			}
+			content.Lines = append(content.Lines, &LogLine{
+				At: t,
+				Line: logLine[1],
+			})
+		}
+	}
+	return content, nil
+}
+	

@@ -6,9 +6,6 @@ import (
 	"net/http"
 	"fmt"
 	"time"
-	"strings"
-	"io"
-	"io/ioutil"
 	"sort"
 	"math"
 	"strconv"
@@ -32,6 +29,8 @@ type web struct {
 	addtask *template.Template
 	graphnodes *template.Template
 	graphedges *template.Template
+	logs *template.Template
+	error *template.Template
 	footer *template.Template
 }
 
@@ -43,9 +42,10 @@ func newWeb(gne gne.GNE) *web {
 		<div>{{if .IsReady}}Ready<a href="./stop">Stop</a>{{else}}Stopped<a href="./restart">Restart</a>{{end}}</div>
 		<div>WaitTime {{.GetWaitTime}}<a href="./waittime">Set</a></div>
 		<div><a href="./man">Task Management</a></div>
+		<div><a href=".">Current Status</a></div>
 		`))
 	w.redirectHome = template.Must(template.New("redirectHome").Parse(`
-		<head><meta http-equiv="Refresh" content="{{.}};url=../"></head>
+		<head><meta http-equiv="Refresh" content="{{.Delay}};url=../?min={{.Min}}&max={{.Max}}"></head>
 		`))
 	w.redirectMan = template.Must(template.New("redirectHome").Parse(`
 		<head><meta http-equiv="Refresh" content="{{.}};url=../man"></head>
@@ -84,6 +84,9 @@ func newWeb(gne gne.GNE) *web {
 		`))
 	w.notification = template.Must(template.New("notification").Parse(`
 		<div>{{.}}</div>
+		`))
+	w.error = template.Must(template.New("error").Parse(`
+		<div>An error occured: {{.}}</div>
 		`))
 	w.addlocal = template.Must(template.New("addlocal").Parse(`
 		<div><a href="../man">Back</a></div>
@@ -166,6 +169,21 @@ func newWeb(gne gne.GNE) *web {
 			{{end}}
 		}
 		`))
+	w.logs = template.Must(template.New("logs").Parse(`
+		<table>
+		<tr><td>Viewing Logs</td><td>{{.CurrentMin}} - {{.CurrentMax}}</td>
+		<tr><td><a href="./?min={{.PreviousMin}}&max={{.PreviousMax}}">Previous</a></td>
+		<td><a href="./?min={{.NextMin}}&max={{.NextMax}}">Next</a></td></tr>
+		{{range .Contents}}
+			<tr><td></td><td></td></tr>
+			<tr><td>{{.At}}</td><td></td></tr>
+			<tr><td></td><td></td></tr>
+			{{range .Lines}}
+				<tr><td>{{.At.String}}</td><td>{{.Line}}</td></tr>
+			{{end}}
+		{{end}}
+		</table>
+		`))
 	w.footer = template.Must(template.New("footer").Parse(`</html>`))
 	return w
 }
@@ -225,21 +243,21 @@ var (
 func (this *web) handleRestart(w http.ResponseWriter, r *http.Request) {
 	this.header.Execute(w, nil)
 	this.gne.Restart()
-	this.redirectHome.Execute(w, quick)
+	this.redirectHome.Execute(w, quickHome)
 	this.footer.Execute(w, nil)
 }
 
 func (this *web) handleStop(w http.ResponseWriter, r *http.Request) {
 	this.header.Execute(w, nil)
 	this.gne.Stop()
-	this.redirectHome.Execute(w, quick)
+	this.redirectHome.Execute(w, quickHome)
 	this.footer.Execute(w, nil)
 }
 
 func (this *web) handleNow(w http.ResponseWriter, r *http.Request) {
 	this.header.Execute(w, nil)
 	this.gne.Now()
-	this.redirectHome.Execute(w, quick)
+	this.redirectHome.Execute(w, quickHome)
 	this.footer.Execute(w, nil)
 }
 
@@ -267,7 +285,7 @@ func (this *web) handleMan(w http.ResponseWriter, r *http.Request) {
 	c := exec.Command("dot", "-Tsvg")
 	in, err := c.StdinPipe()
 	if err != nil {
-		fmt.Fprintf(w, "<div>Os Error = %v</div>", err)
+		this.error.Execute(w, fmt.Sprintf("%v", err))
 	} else {
 		go func() { 
 		this.graphnodes.Execute(in, this.gne.GetLocations())
@@ -276,7 +294,7 @@ func (this *web) handleMan(w http.ResponseWriter, r *http.Request) {
 		}()
 		data, err := c.CombinedOutput()
 		if err != nil {
-			fmt.Fprintf(w, "<div>Dot Error = %v</div>", err)
+			this.error.Execute(w, fmt.Sprintf("%v", err))
 		} else {
 			fmt.Fprintf(w, "%v", string(data))
 		}
@@ -291,7 +309,7 @@ func (this *web) handleRemoveLocation(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		this.header.Execute(w, nil)
 		this.redirectMan.Execute(w, slow)
-		this.notification.Execute(w, string("location does not exist"))
+		this.error.Execute(w, "location does not exist")
 		this.footer.Execute(w, nil)
 		return
 	}
@@ -299,7 +317,7 @@ func (this *web) handleRemoveLocation(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		this.header.Execute(w, nil)
 		this.redirectMan.Execute(w, slow)
-		this.notification.Execute(w, fmt.Sprintf("unable to remove location: %v", err))
+		this.error.Execute(w, fmt.Sprintf("unable to remove location: %v", err))
 		this.footer.Execute(w, nil)
 	} else {
 		this.redirectMan.Execute(w, quick)
@@ -313,12 +331,12 @@ func (this *web) handleRemoveTask(w http.ResponseWriter, r *http.Request) {
 	task, ok := tasks[taskKey]
 	if !ok {
 		this.redirectMan.Execute(w, slow)
-		this.notification.Execute(w, string("task does not exist"))
+		this.error.Execute(w, "task does not exist")
 	} else {
 		err := this.gne.RemoveTask(task)
 		if err != nil {
 			this.redirectMan.Execute(w, slow)
-			this.notification.Execute(w, fmt.Sprintf("unable to remove task: %v", err))
+			this.error.Execute(w, fmt.Sprintf("unable to remove task: %v", err))
 		} else {
 			this.redirectMan.Execute(w, quick)
 		}
@@ -339,7 +357,7 @@ func (this *web) handleAddLocalCall(w http.ResponseWriter, r *http.Request) {
 	err := this.gne.AddLocation(location)
 	if err != nil {
 		this.redirectMan.Execute(w, slow)
-		this.notification.Execute(w, fmt.Sprintf("unable to add local location: %v", err))
+		this.error.Execute(w, fmt.Sprintf("unable to add local location: %v", err))
 	} else {
 		this.redirectMan.Execute(w, quick)
 	}
@@ -365,7 +383,7 @@ func (this *web) handleAddRemoteCall(w http.ResponseWriter, r *http.Request) {
 	err := this.gne.AddLocation(location)
 	if err != nil {
 		this.redirectMan.Execute(w, slow)
-		this.notification.Execute(w, fmt.Sprintf("unable to add remote location: %v", err))
+		this.error.Execute(w, fmt.Sprintf("unable to add remote location: %v", err))
 	} else {
 		this.redirectMan.Execute(w, quick)
 	}
@@ -387,185 +405,123 @@ func (this *web) handleAddTaskCall(w http.ResponseWriter, r *http.Request) {
 	err := this.gne.AddTask(task)
 	if err != nil {
 		this.redirectMan.Execute(w, slow)
-		this.notification.Execute(w, fmt.Sprintf("unable to add task: %v", err))
+		this.error.Execute(w, fmt.Sprintf("unable to add task: %v", err))
 	} else {
 		this.redirectMan.Execute(w, quick)
 	}
 	this.footer.Execute(w, nil)
 }
 
-/*func (this *web) writeButtons(w http.ResponseWriter) {
-	fmt.Fprintf(w, `<form action="." method="post">`)
-	minutes := int(this.gne.GetWaitTime() / time.Minute)
-	fmt.Fprintf(w, `<input type="number" name="wait" value="%v" /> minutes`, minutes)
-	fmt.Fprintf(w, `<input type="submit" name="action" value="restart"/>`)
-	fmt.Fprintf(w, `<input type="submit" name="action" value="stop"/>`)
-	fmt.Fprintf(w, `<input type="submit" name="action" value="now"/>`)
-	fmt.Fprintf(w, `<input type="submit" name="action" value="refresh"/>`)
-	fmt.Fprintf(w, `<input type="checkbox" name"log" value"true"/>`)
-	fmt.Fprintf(w, `<input type="checkbox" name"diff" value"true"/>`)
-	fmt.Fprintf(w, `</form>`)
-	fmt.Fprintf(w, `<a href="./stop">stop</a>`)
-	fmt.Fprintf(w, `<a href="./restart">restart</a>`)
-}*/
+type logs struct {
+	min time.Time
+	max time.Time
+	Contents []*gne.LogContent
+}
 
-func (this *web) writeLogs(w http.ResponseWriter, minTime, maxTime string) {
-	fmt.Fprintf(w, "<table>")
-	defer fmt.Fprintf(w, "</table>")
-	logs, err := gne.NewLogFiles(".")
+func (this *logs) dur() time.Duration {
+	return time.Duration(this.max.UnixNano() - this.min.UnixNano())
+}
+
+func (this *logs) format() string {
+	return gne.DefaultTimeFormat
+}
+
+func (this *logs) PreviousMin() string {
+	return this.min.Add(-1*this.dur()).Format(this.format())
+}
+
+func (this *logs) PreviousMax() string {
+	return this.max.Add(-1*this.dur()).Format(this.format())
+}
+
+func (this *logs) CurrentMin() string {
+	return this.min.Format(this.format())
+}
+
+func (this *logs) CurrentMax() string {
+	return this.max.Format(this.format())
+}
+
+func (this *logs) NextMin() string {
+	return this.min.Add(this.dur()).Format(this.format())
+}
+
+func (this *logs) NextMax() string {
+	return this.max.Add(this.dur()).Format(this.format())
+}
+
+func (this *web) newLogs(minTime, maxTime string) (*logs, error) {
+	logFiles, err := this.gne.GetLogs()
 	if err != nil {
-		fmt.Fprintf(w, "<tr><td>An error occured</td><td>%v</td></tr>", err)
-		return
+		return nil, err
 	}
-    sort.Sort(logs)
+    sort.Sort(logFiles)
     min := time.Unix(0, 0)
-    if len(logs) > 10 {
-    	min = logs[10].At
+    if len(logFiles) > 10 {
+    	min = logFiles[10].At
     }
     max := time.Unix(0, math.MaxInt64)	
-    if len(logs) > 0 {
-    	max = logs[0].At
+    if len(logFiles) > 0 {
+    	max = logFiles[0].At
     }
     if len(minTime) > 0 {
     	min, err = time.Parse(gne.DefaultTimeFormat, minTime)
     	if err != nil {
-    		fmt.Fprintf(w, "<tr><td>An error occured</td><td>%v</td></tr>", err)
+    		return nil, err
     	}
     }
     if len(maxTime) > 0 {
     	max, err = time.Parse(gne.DefaultTimeFormat, maxTime)
     	if err != nil {
-    		fmt.Fprintf(w, "<tr><td>An error occured</td><td>%v</td></tr>", err)
+    		return nil, err
     	}
     }
-    dur := time.Duration(max.UnixNano() - min.UnixNano())
-    fmt.Fprintf(w, `<tr><td>Viewing Logs</td><td>%v - %v</td>`, 
-		min.Format(gne.DefaultTimeFormat), 
-		max.Format(gne.DefaultTimeFormat))
-    fmt.Fprintf(w, `<tr><td><a href="./?min=%v&max=%v">Previous</a></td>`, 
-		min.Add(-1*dur).Format(gne.DefaultTimeFormat), 
-		max.Add(-1*dur).Format(gne.DefaultTimeFormat))
-    fmt.Fprintf(w, `<td><a href="./?min=%v&max=%v">Next</a></td></tr>`, 
-		min.Add(dur).Format(gne.DefaultTimeFormat), 
-		max.Add(dur).Format(gne.DefaultTimeFormat))
-    for _, l := range logs {
+    contents := make([]*gne.LogContent, 0)
+    for _, l := range logFiles {
     	if l.At.Before(max) && l.At.After(min) {
-	  		fmt.Fprintf(w, "<tr><td></td><td></td></tr>")
-	  		fmt.Fprintf(w, "<tr><td>%v</td><td></td></tr>", l.At)
-	  		fmt.Fprintf(w, "<tr><td></td><td></td></tr>")
-	    	err := writeLogFile(l, w)
-	    	if err != nil {
-	    		fmt.Fprintf(w, "<tr><td>An error occured</td><td>%v</td></tr>", err)	
-	    		return
-	    	}
+    		content, err := l.Open()
+    		if err != nil {
+    			return nil, err
+    		} else {
+    			contents = append(contents, content)	
+    		}
     	}
     }
+    return &logs{
+    	min: min,
+    	max: max,
+    	Contents: contents,
+    }, nil
+}
+
+type redirectHome struct {
+	Min string
+	Max string
+	Delay int
+}
+
+var quickHome = &redirectHome{
+	Min: "",
+	Max: "",
+	Delay: quick,
 }
 
 func (this *web) handleStatus(w http.ResponseWriter, r *http.Request) {
 	min := r.FormValue("min")
 	max := r.FormValue("max")
 	this.header.Execute(w, nil)
-	this.redirectHome.Execute(w, slow)
+	this.redirectHome.Execute(w, &redirectHome{
+		Min: min,
+		Max: max,
+		Delay: slow,
+	})
 	this.status.Execute(w, this.gne)
-	this.writeLogs(w, min, max)
+	logs, err := this.newLogs(min, max)
+	if err != nil {
+		this.error.Execute(w, fmt.Sprintf("%v", err))
+	} else {
+		this.logs.Execute(w, logs)
+	}
 	this.footer.Execute(w, nil)
 }
 
-func (this *web) tasksHandler(w http.ResponseWriter, r *http.Request) {
-	this.header.Execute(w, nil)
-	fmt.Fprintf(w, `<a href="../">Status</a>`)
-	this.footer.Execute(w, nil)
-}
-
-/*
-import (
-	"fmt"
-	"net/http"
-	"strings"
-	"path/filepath"
-	"os"
-	"time"
-	"sort"
-	"io/ioutil"
-	"path"
-	"math"
-	"io"
-)
-
-const (
-	DefaultTimeFormat = "2006-01-02T15:04:05Z"
-	Today = "today"
-	All = "all"
-	Range = "range"
-)
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "<table>")
-	defer fmt.Fprintf(w, "</table>")
-	_, addr := path.Split(r.URL.Path)
-	if len(addr) == 0 {
-		addr = All
-	}
-	logs, err := newLogs(".")
-	if err != nil {
-		fmt.Fprintf(w, "<tr><td>An error occured</td><td>%v</td></tr>", err)
-		return
-	}
-    sort.Sort(logs)
-    min := time.Unix(0, 0)
-    max := time.Unix(0, math.MaxInt64)
-    switch addr {
-    case Today:
-    	now := time.Now()
-    	min = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-    	max = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999999999, now.Location())
-    case Range:
-    	min, err = time.Parse(DefaultTimeFormat, r.FormValue("min"))
-    	if err != nil {
-    		fmt.Fprintf(w, "<tr><td>time Parse error</td><td>%v</td></tr>", err)
-    		return
-    	}
-    	max, err = time.Parse(DefaultTimeFormat, r.FormValue("max"))
-    	if err != nil {
-    		fmt.Fprintf(w, "<tr><td>time Parse error</td><td>%v</td></tr>", err)
-    		return
-    	}
-    }
-    
-    if addr != All {
-    	fmt.Fprintf(w, `<tr><td><a href="./range?min=%v&max=%v">Previous Day</a></td>`, 
-    		min.Add(time.Hour*-24).Format(DefaultTimeFormat), 
-    		max.Add(time.Hour*-24).Format(DefaultTimeFormat))
-    	fmt.Fprintf(w, `<td><a href="./range?min=%v&max=%v">Next Day</a></td></tr>`, 
-    		min.Add(time.Hour*24).Format(DefaultTimeFormat), 
-    		max.Add(time.Hour*24).Format(DefaultTimeFormat))
-    }
-    for _, l := range logs {
-    	if l.at.Before(max) && l.at.After(min) {
-	    	err := l.Rows(w)
-	    	if err != nil {
-	    		fmt.Fprintf(w, "<tr><td>An error occured</td><td>%v</td></tr>", err)	
-	    		return
-	    	}
-    	}
-    }
-}
-
-*/
-
-func writeLogFile(logFile *gne.LogFile, w io.Writer) error {
-	data, err := ioutil.ReadFile(logFile.Filename)
-	if err != nil {
-		return err
-	}
-	dataStr := string(data)
-	lines := strings.Split(dataStr, "\n")
-	for _, line := range lines {
-		cs := strings.SplitN(line, " | ", 2)
-		if len(cs) == 2 {
-			fmt.Fprintf(w, "<tr><td>%v</td><td>%v</td></tr>", cs[0], cs[1])
-		}
-	}
-	return nil
-}

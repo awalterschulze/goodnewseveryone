@@ -20,6 +20,7 @@ type GNE interface {
 	Stop()
 	IsReady() bool
 	IsRunning() bool
+	GetLogs() (LogFiles, error)
 	Start()
 }
 
@@ -133,6 +134,10 @@ func (this *gne) IsReady() bool {
 
 func (this *gne) IsRunning() bool {
 	return this.executor.IsRunning()
+}
+
+func (this *gne) GetLogs() (LogFiles, error) {
+	return NewLogFiles(".")
 }
 
 func (this *gne) Start() {
