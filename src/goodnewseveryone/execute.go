@@ -88,8 +88,20 @@ func (this *executor) one(log Log, kernel *kernel, locations Locations, task Tas
 	if err != nil {
 		return err
 	}
+	if err := writeList(src); err != nil {
+		return err
+	}
+	if err := writeList(dst); err != nil {
+		return err
+	}
 	_, err = kernel.run(log, t)
 	if err != nil {
+		return err
+	}
+	if err := writeList(src); err != nil {
+		return err
+	}
+	if err := writeList(dst); err != nil {
 		return err
 	}
 	return nil

@@ -78,7 +78,7 @@ func (this LogFiles) Less(i, j int) bool {
 
 func NewLogFiles(root string) (LogFiles, error) {
 	filenames := []string{}
-	filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if strings.HasSuffix(path, ".log") {
 			filenames = append(filenames, path)
 		}
