@@ -15,7 +15,9 @@ var (
 	errUnknownLocation = errors.New("Unknown Location")
 )
 
-type Locations map[string]Location
+type LocationId string
+
+type Locations map[LocationId]Location
 
 func configToLocations(log Log, configLoc string) (Locations, error) {
 	locations := make(Locations)
@@ -54,19 +56,26 @@ func configToLocations(log Log, configLoc string) (Locations, error) {
 	return locations, nil
 }
 
-func (locations Locations) Remove(loc Location) error {
-	if _, ok := locations[loc.String()]; !ok {
+func (locations Locations) Remove(locId LocationId) error {
+	if _, ok := locations[locId]; !ok {
 		return errUnknownLocation
 	}
-	delete(locations, loc.String())
+	if err := locations[locId].delete(); err != nil {
+		return err
+	}
+	delete(locations, locId)
 	return nil
 }
 
 func (locations Locations) Add(loc Location) error {
-	if _, ok := locations[loc.String()]; ok {
+	if _, ok := locations[loc.Id()]; ok {
 		return errDuplicateLocation
 	}
-	locations[loc.String()] = loc
+	err := loc.save()
+	if err != nil {
+		return err
+	}
+	locations[loc.Id()] = loc
 	return nil
 }
 
@@ -80,11 +89,14 @@ func (locations Locations) String() string {
 
 type Location interface {
 	String() string
+	Id() LocationId
 	newLocateCommand() *command
 	located(log Log, output string) bool
 	newMountCommand() *command
 	newUmountCommand() *command
 	getLocal() string
+	save() error
+	delete() error
 }
 
 type RemoteLocationType string
@@ -144,7 +156,7 @@ func (this *RemoteLocation) located(log Log, output string) bool {
 		log.Write(fmt.Sprintf("Cannot Locate %v", this))
 		return false
 	}
-	if !strings.Contains(output, this.Mac) {
+	if !strings.Contains(strings.ToLower(output), strings.ToLower(this.Mac)) {
 		log.Write(fmt.Sprintf("Cannot Locate %v", this))
 		return false
 	}
@@ -177,6 +189,32 @@ func (this *RemoteLocation) getLocal() string {
 
 func (this *RemoteLocation) String() string {
 	return "REMOTE=" + this.Mac + "-" + string(this.Type) + "//" + this.Remote
+}
+
+func (this *RemoteLocation) Id() LocationId {
+	return LocationId("REMOTE-" + string(this.Type) + "-" +
+		strings.Replace(this.Mac, ":", "-", -1) + 
+		"-" + 
+		strings.Replace(this.Remote, "/", "-", -1))
+}
+
+func (this *RemoteLocation) filename() string {
+	return fmt.Sprintf("%v.remote.json", this.Id())
+}
+
+func (this *RemoteLocation) save() error {
+	data, err := json.Marshal(this)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(this.filename(), data, 0666); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (this *RemoteLocation) delete() error {
+	return os.Remove(this.filename())
 }
 
 type LocalLocation struct {
@@ -223,3 +261,25 @@ func (this *LocalLocation) getLocal() string {
 	return this.Local
 }
 
+func (this *LocalLocation) Id() LocationId {
+	return LocationId("LOCAL"+strings.Replace(this.Local, "/", "-", -1))
+}
+
+func (this *LocalLocation) filename() string {
+	return fmt.Sprintf("%v.local.json", this.Id())
+}
+
+func (this *LocalLocation) save() error {
+	data, err := json.Marshal(this)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(this.filename(), data, 0666); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (this *LocalLocation) delete() error {
+	return os.Remove(this.filename())
+}

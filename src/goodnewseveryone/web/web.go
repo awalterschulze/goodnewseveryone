@@ -29,6 +29,8 @@ type web struct {
 	addtask *template.Template
 	graphnodes *template.Template
 	graphedges *template.Template
+	diffs *template.Template
+	diffLocations *template.Template
 	logs *template.Template
 	error *template.Template
 	footer *template.Template
@@ -36,13 +38,22 @@ type web struct {
 
 func newWeb(gne gne.GNE) *web {
 	w := &web{gne: gne}
-	w.header = template.Must(template.New("header").Parse(`<html>`))
+	w.header = template.Must(template.New("header").Parse(`<html><title>Good News Everyone</title>`))
 	w.status = template.Must(template.New("status").Parse(`
 		<div>{{if .IsRunning}}Running{{else}}Not Running{{if .IsReady}}<a href="./now">Now</a>{{end}}{{end}}</div>
 		<div>{{if .IsReady}}Ready<a href="./stop">Stop</a>{{else}}Stopped<a href="./restart">Restart</a>{{end}}</div>
 		<div>WaitTime {{.GetWaitTime}}<a href="./waittime">Set</a></div>
 		<div><a href="./man">Task Management</a></div>
+		<div><a href="./diffs">Diffs</a></div>
 		<div><a href=".">Current Status</a></div>
+		`))
+	w.diffLocations = template.Must(template.New("diffLocations").Parse(`
+		<div><a href="../">Back To Current Status</a></div>
+		<table>
+		{{range .}}
+			<tr><td><a href="./diffs?location={{.Id}}">{{.}}</a></td></tr>
+		{{end}}
+		</table>
 		`))
 	w.redirectHome = template.Must(template.New("redirectHome").Parse(`
 		<head><meta http-equiv="Refresh" content="{{.Delay}};url=../?min={{.Min}}&max={{.Max}}"></head>
@@ -70,15 +81,16 @@ func newWeb(gne gne.GNE) *web {
 		<div>Locations</div>
 		<table>
 		{{range .}}
-		<tr><td><div>{{.String}}</div></td><td><a href="./removelocation?location={{.String}}">Remove</a></td></tr>
+		<tr><td><div>{{.Id}}</div></td><td><a href="./removelocation?location={{.Id}}">Remove</a></td></tr>
 		{{end}}
 		</table>
 	`))
 	w.tasks = template.Must(template.New("tasks").Parse(`
 		<div>Tasks</div>
 		<table>
+		<tr><td>Task</td><td></td><td>Last Completed Time</td></tr>
 		{{range .}}
-		<tr><td><div>{{.String}}</div></td><td><a href="./removetask?task={{.String}}">Remove</a></td></tr>
+		<tr><td>{{.Id}}</td><td><a href="./removetask?task={{.Id}}">Remove</a></td><td>{{.LastCompleted}}</td></tr>
 		{{end}}
 		</table>
 		`))
@@ -127,7 +139,7 @@ func newWeb(gne gne.GNE) *web {
 					<td>
 						<select name="src">
 						{{range .}}
-						<option value="{{.String}}">{{.String}}</option>
+						<option value="{{.Id}}">{{.Id}}</option>
 						{{end}}
 					</td>
 				</tr>
@@ -149,7 +161,7 @@ func newWeb(gne gne.GNE) *web {
 					<td>
 						<select name="dst">
 						{{range .}}
-						<option value="{{.String}}" selected="selected">{{.String}}</option>
+						<option value="{{.Id}}" selected="selected">{{.Id}}</option>
 						{{end}}
 					</td>
 				</tr>
@@ -160,7 +172,7 @@ func newWeb(gne gne.GNE) *web {
 	w.graphnodes = template.Must(template.New("graphnodes").Parse(`
 		digraph {
 			{{range .}}
-			"{{.String}}";
+			"{{.Id}}";
 			{{end}}
 		`))
 	w.graphedges = template.Must(template.New("graphedges").Parse(`
@@ -168,6 +180,24 @@ func newWeb(gne gne.GNE) *web {
 			"{{.Src}}" -> "{{.Dst}}" [label="{{.Type}}"];
 			{{end}}
 		}
+		`))
+	w.diffs = template.Must(template.New("diffs").Parse(`
+		<table>
+		<tr><td>Viewing Logs</td><td>{{.CurrentMin}} - {{.CurrentMax}}</td>
+		<tr><td><a href="./diffs?min={{.PreviousMin}}&max={{.PreviousMax}}">Previous</a></td>
+		<td><a href="./diffs?min={{.NextMin}}&max={{.NextMax}}">Next</a></td></tr>
+		{{range .Contents}}
+			<tr><td></td><td></td></tr>
+			<tr><td>{{.At}}</td><td></td></tr>
+			<tr><td></td><td></td></tr>
+			{{range .Created}}
+				<tr><td>+</td><td>{{.}}</td></tr>
+			{{end}}
+			{{range .Deleted}}
+				<tr><td>-</td><td>{{.}}</td></tr>
+			{{end}}
+		{{end}}
+		</table>
 		`))
 	w.logs = template.Must(template.New("logs").Parse(`
 		<table>
@@ -228,6 +258,9 @@ func Serve(gne gne.GNE) {
 	})
 	http.HandleFunc("/addtaskcall", func(w http.ResponseWriter, r *http.Request) {
 		this.handleAddTaskCall(w,r)
+	})
+	http.HandleFunc("/diffs", func(w http.ResponseWriter, r *http.Request) {
+		this.handleDiffs(w, r)
 	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		this.handleStatus(w,r)
@@ -303,9 +336,9 @@ func (this *web) handleMan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (this *web) handleRemoveLocation(w http.ResponseWriter, r *http.Request) {
-	locationKey := r.FormValue("location")
+	locationId := r.FormValue("location")
 	locations := this.gne.GetLocations()
-	location, ok := locations[locationKey]
+	location, ok := locations[gne.LocationId(locationId)]
 	if !ok {
 		this.header.Execute(w, nil)
 		this.redirectMan.Execute(w, slow)
@@ -313,7 +346,7 @@ func (this *web) handleRemoveLocation(w http.ResponseWriter, r *http.Request) {
 		this.footer.Execute(w, nil)
 		return
 	}
-	err := this.gne.RemoveLocation(location)
+	err := this.gne.RemoveLocation(location.Id())
 	if err != nil {
 		this.header.Execute(w, nil)
 		this.redirectMan.Execute(w, slow)
@@ -326,14 +359,14 @@ func (this *web) handleRemoveLocation(w http.ResponseWriter, r *http.Request) {
 
 func (this *web) handleRemoveTask(w http.ResponseWriter, r *http.Request) {
 	this.header.Execute(w, nil)
-	taskKey := r.FormValue("task")
+	taskId := r.FormValue("task")
 	tasks := this.gne.GetTasks()
-	task, ok := tasks[taskKey]
+	task, ok := tasks[gne.TaskId(taskId)]
 	if !ok {
 		this.redirectMan.Execute(w, slow)
 		this.error.Execute(w, "task does not exist")
 	} else {
-		err := this.gne.RemoveTask(task)
+		err := this.gne.RemoveTask(task.Id())
 		if err != nil {
 			this.redirectMan.Execute(w, slow)
 			this.error.Execute(w, fmt.Sprintf("unable to remove task: %v", err))
@@ -401,7 +434,7 @@ func (this *web) handleAddTaskCall(w http.ResponseWriter, r *http.Request) {
 	typ := r.FormValue("typ")
 	src := r.FormValue("src")
 	dst := r.FormValue("dst")
-	task := gne.NewTask(src, gne.TaskType(typ), dst)
+	task := gne.NewTask(gne.LocationId(src), gne.TaskType(typ), gne.LocationId(dst))
 	err := this.gne.AddTask(task)
 	if err != nil {
 		this.redirectMan.Execute(w, slow)
@@ -412,42 +445,127 @@ func (this *web) handleAddTaskCall(w http.ResponseWriter, r *http.Request) {
 	this.footer.Execute(w, nil)
 }
 
-type logs struct {
+type timeRange struct {
 	min time.Time
 	max time.Time
-	Contents []*gne.LogContent
 }
 
-func (this *logs) dur() time.Duration {
+func newTimeRange(minTime, maxTime string) (*timeRange, error) {
+	min := time.Unix(0, 0)
+	var err error = nil
+	if len(minTime) > 0 {
+    	min, err = time.Parse(gne.DefaultTimeFormat, minTime)
+    	if err != nil {
+    		return nil, err
+    	}
+    }
+    max := time.Unix(0, math.MaxInt64)
+    if len(maxTime) > 0 {
+    	max, err = time.Parse(gne.DefaultTimeFormat, maxTime)
+    	if err != nil {
+    		return nil, err
+    	}
+    }
+    return &timeRange{min, max}, nil
+}
+
+func (this *timeRange) dur() time.Duration {
 	return time.Duration(this.max.UnixNano() - this.min.UnixNano())
 }
 
-func (this *logs) format() string {
+func (this *timeRange) format() string {
 	return gne.DefaultTimeFormat
 }
 
-func (this *logs) PreviousMin() string {
+func (this *timeRange) PreviousMin() string {
 	return this.min.Add(-1*this.dur()).Format(this.format())
 }
 
-func (this *logs) PreviousMax() string {
+func (this *timeRange) PreviousMax() string {
 	return this.max.Add(-1*this.dur()).Format(this.format())
 }
 
-func (this *logs) CurrentMin() string {
+func (this *timeRange) CurrentMin() string {
 	return this.min.Format(this.format())
 }
 
-func (this *logs) CurrentMax() string {
+func (this *timeRange) CurrentMax() string {
 	return this.max.Format(this.format())
 }
 
-func (this *logs) NextMin() string {
+func (this *timeRange) NextMin() string {
 	return this.min.Add(this.dur()).Format(this.format())
 }
 
-func (this *logs) NextMax() string {
+func (this *timeRange) NextMax() string {
 	return this.max.Add(this.dur()).Format(this.format())
+}
+
+type DiffContent struct {
+	At time.Time
+	Created []string
+	Deleted []string
+}
+
+type diffs struct {
+	*timeRange
+	Contents []*DiffContent
+}
+
+func (this *web) newDiffs(location, minTime, maxTime string) (*diffs, error) {
+	diffsPerLocation, err := this.gne.GetDiffs()
+	if err != nil {
+		return nil, err
+	}
+	t, err := newTimeRange(minTime, maxTime)
+	if err != nil {
+		return nil, err
+	}
+	theDiffs := diffsPerLocation[location]
+	if len(minTime) == 0 && len(theDiffs) > 10 {
+    	t.min = theDiffs[10].At.Add(-1*time.Nanosecond)
+    }
+    if len(maxTime) == 0 && len(theDiffs) > 0 {
+    	t.max = theDiffs[0].At.Add(time.Nanosecond)
+    }
+    contents := make([]*DiffContent, 0)
+    for _, d := range theDiffs {
+    	if d.At.Before(t.max) && d.At.After(t.min) {
+    		created, deleted, err := d.Take()
+    		if err != nil {
+    			return nil, err
+    		}
+    		contents = append(contents, &DiffContent{
+    			Created: created,
+    			Deleted: deleted,
+    			At: d.At,
+    		})
+    	}
+    }
+    return &diffs{
+    	timeRange: t,
+    	Contents: contents,
+    }, nil
+}
+
+func (this *web) handleDiffs(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
+	location := r.FormValue("location")
+	minTime := r.FormValue("min")
+	maxTime := r.FormValue("max")
+	this.diffLocations.Execute(w, this.gne.GetLocations())
+	diffs, err := this.newDiffs(location, minTime, maxTime)
+	if err != nil {
+		this.error.Execute(w, fmt.Sprintf("%v", err))
+	} else {
+		this.diffs.Execute(w, diffs)
+	}
+	this.footer.Execute(w, nil)
+}
+
+type logs struct {
+	*timeRange
+	Contents []*gne.LogContent
 }
 
 func (this *web) newLogs(minTime, maxTime string) (*logs, error) {
@@ -456,29 +574,19 @@ func (this *web) newLogs(minTime, maxTime string) (*logs, error) {
 		return nil, err
 	}
     sort.Sort(logFiles)
-    min := time.Unix(0, 0)
-    if len(logFiles) > 10 {
-    	min = logFiles[10].At
+    t, err := newTimeRange(minTime, maxTime)
+    if err != nil {
+    	return nil, err
     }
-    max := time.Unix(0, math.MaxInt64)	
-    if len(logFiles) > 0 {
-    	max = logFiles[0].At
+    if len(minTime) == 0 && len(logFiles) > 10 {
+    	t.min = logFiles[10].At.Add(-1*time.Nanosecond)
     }
-    if len(minTime) > 0 {
-    	min, err = time.Parse(gne.DefaultTimeFormat, minTime)
-    	if err != nil {
-    		return nil, err
-    	}
-    }
-    if len(maxTime) > 0 {
-    	max, err = time.Parse(gne.DefaultTimeFormat, maxTime)
-    	if err != nil {
-    		return nil, err
-    	}
+    if len(maxTime) == 0 && len(logFiles) > 0 {
+    	t.max = logFiles[0].At.Add(time.Nanosecond)
     }
     contents := make([]*gne.LogContent, 0)
     for _, l := range logFiles {
-    	if l.At.Before(max) && l.At.After(min) {
+    	if l.At.Before(t.max) && l.At.After(t.min) {
     		content, err := l.Open()
     		if err != nil {
     			return nil, err
@@ -488,8 +596,7 @@ func (this *web) newLogs(minTime, maxTime string) (*logs, error) {
     	}
     }
     return &logs{
-    	min: min,
-    	max: max,
+    	timeRange: t,
     	Contents: contents,
     }, nil
 }

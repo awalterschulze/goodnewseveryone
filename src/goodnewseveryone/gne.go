@@ -4,14 +4,19 @@ import (
 	"fmt"
 	"time"
 	"sync"
+	"errors"
+)
+
+var (
+	errLocationExists = errors.New("There is a Task that is still using this location")
 )
 
 type GNE interface {
 	AddLocation(loc Location) error
-	RemoveLocation(loc Location) error
+	RemoveLocation(locId LocationId) error
 	GetLocations() Locations
 	AddTask(task Task) error
-	RemoveTask(task Task) error
+	RemoveTask(taskId TaskId) error
 	GetTasks() Tasks
 	SetWaitTime(waitTime time.Duration)
 	GetWaitTime() time.Duration
@@ -21,6 +26,8 @@ type GNE interface {
 	IsReady() bool
 	IsRunning() bool
 	GetLogs() (LogFiles, error)
+	GetFileLists() (FileLists, error)
+	GetDiffs() (DiffsPerLocation, error)
 	Start()
 }
 
@@ -82,8 +89,13 @@ func (this *gne) AddLocation(loc Location) error {
 	return this.locations.Add(loc)
 }
 
-func (this *gne) RemoveLocation(loc Location) error {
-	return this.locations.Remove(loc)
+func (this *gne) RemoveLocation(locId LocationId) error {
+	for _, t := range this.tasks {
+		if t.Src == locId || t.Dst == locId {
+			return errLocationExists
+		}
+	}
+	return this.locations.Remove(locId)
 }
 
 func (this *gne) GetLocations() Locations {
@@ -100,8 +112,8 @@ func (this *gne) AddTask(task Task) error {
 	return this.tasks.Add(task)
 }
 
-func (this *gne) RemoveTask(task Task) error {
-	return this.tasks.Remove(task)
+func (this *gne) RemoveTask(taskId TaskId) error {
+	return this.tasks.Remove(taskId)
 }
 
 func (this *gne) GetTasks() Tasks {
@@ -138,6 +150,14 @@ func (this *gne) IsRunning() bool {
 
 func (this *gne) GetLogs() (LogFiles, error) {
 	return NewLogFiles(".")
+}
+
+func (this *gne) GetFileLists() (FileLists, error) {
+	return NewFileLists(".")
+}
+
+func (this *gne) GetDiffs() (DiffsPerLocation, error) {
+	return NewDiffsPerLocation(".")
 }
 
 func (this *gne) Start() {

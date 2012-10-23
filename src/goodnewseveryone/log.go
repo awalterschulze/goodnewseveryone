@@ -134,13 +134,12 @@ func (this *LogFile) Open() (*LogContent, error) {
 		logLine := strings.SplitN(line, logLineSep, 2)
 		if len(logLine) == 2 {
 			t, err := time.Parse(DefaultTimeFormat, logLine[0])
-			if err != nil {
-				return nil, err
+			if err == nil {
+				content.Lines = append(content.Lines, &LogLine{
+					At: t,
+					Line: logLine[1],
+				})	
 			}
-			content.Lines = append(content.Lines, &LogLine{
-				At: t,
-				Line: logLine[1],
-			})
 		}
 	}
 	return content, nil

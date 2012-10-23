@@ -60,6 +60,8 @@ func (this *executor) one(log Log, kernel *kernel, locations Locations, task Tas
 		log.Error(errUnknownLocation)
 		return errUnknownLocation
 	}
+	kernel.overrun(log, src.newUmountCommand())
+	kernel.overrun(log, dst.newUmountCommand())
 	output, err := kernel.run(log, src.newLocateCommand())
 	if err != nil {
 		return err
@@ -104,5 +106,6 @@ func (this *executor) one(log Log, kernel *kernel, locations Locations, task Tas
 	if err := writeList(dst); err != nil {
 		return err
 	}
+	task.Complete()
 	return nil
 }
