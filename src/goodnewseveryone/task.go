@@ -74,10 +74,11 @@ type TaskType string
 var (
 	Sync = TaskType("sync")
 	Backup = TaskType("backup")
+	Move = TaskType("move")
 )
 
 var (
-	errUndefinedTaskType = errors.New("Undefined Task Type: currently only sync and backup are supported")
+	errUndefinedTaskType = errors.New("Undefined Task Type: currently only sync, backup and move are supported")
 )
 
 type Task struct {
@@ -96,7 +97,7 @@ func configToTask(configLoc string, filename string) (Task, error) {
 	if err := json.Unmarshal(data, &task); err != nil {
 		return task, err
 	}
-	if task.Type != Sync && task.Type != Backup {
+	if task.Type != Sync && task.Type != Backup && task.Type != Move {
 		return task, errUndefinedTaskType
 	}
 	suffix := string(task.Id())+".complete"
@@ -179,6 +180,8 @@ func (this Task) newCommand(locations Locations) (*command, error) {
 		return newSyncCommand(src.getLocal(), dst.getLocal()), nil
 	case Backup:
 		return newBackupCommand(src.getLocal(), dst.getLocal()), nil
+	case Move:
+		return newMoveCommand(src.getLocal(), dst.getLocal()), nil
 	}
 	panic("unreachable")
 }

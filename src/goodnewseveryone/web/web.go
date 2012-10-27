@@ -151,6 +151,7 @@ func newWeb(gne gne.GNE) *web {
 						<select name="typ">
 						<option value="sync" selected="selected">Sync</option>
 						<option value="backup" selected="selected">Backup</option>
+						<option value="move" selected="selected">Move</option>
 						</select>
 					</td>
 				</tr>

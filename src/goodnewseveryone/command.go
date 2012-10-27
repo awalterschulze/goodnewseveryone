@@ -119,6 +119,10 @@ func newBackupCommand(loc1, loc2 string) *command {
 	return newCommand("rdiff-backup", loc1, loc2)
 }
 
+func newMoveCommand(loc1, loc2 string) *command {
+	return newCommand("rsync", "--remove-source-files", loc1, loc2)
+}
+
 func newCifsMountCommand(ipAddress, remoteLoc, mountLoc, username, password string) *command {
 	return newCensoredCommand("mount", "-t", "cifs", "//" + ipAddress + "/" + remoteLoc, mountLoc, "-o", "username="+username+",password="+password)
 }
