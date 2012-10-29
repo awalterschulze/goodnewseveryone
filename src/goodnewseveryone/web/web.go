@@ -25,6 +25,7 @@ type web struct {
 	tasks *template.Template
 	notification *template.Template
 	addlocal *template.Template
+	addusb *template.Template
 	addremote *template.Template
 	addtask *template.Template
 	graphnodes *template.Template
@@ -74,6 +75,7 @@ func newWeb(gne gne.GNE) *web {
 		<div>Management</div>
 		<div><a href="../">Back</a></div>
 		<div><a href="./addlocal">Add Local Location</a></div>
+		<div><a href="./addusb">Add USB Location</a></div>
 		<div><a href="./addremote">Add Remote Location</a></div>
 		<div><a href="./addtask">Add Task</a></div>
 		`))
@@ -108,6 +110,14 @@ func newWeb(gne gne.GNE) *web {
 			<input type="submit" name="submit" value="AddLocal"/>
 		</form>
 		`))
+	w.addusb = template.Must(template.New("addusb").Parse(`
+		<div><a href="../man">Back</a></div>
+		<form action="./addusbcall" method="get">
+			<div>Add USB Location</div>
+			Folder<input type="text" name="usb" value=""/>
+			<input type="submit" name="submit" value="AddUSB"/>
+		</form>
+		`))
 	w.addremote = template.Must(template.New("addremote").Parse(`
 		<div><a href="../man">Back</a></div>
 		<form action="./addremotecall" method="get">
@@ -119,11 +129,9 @@ func newWeb(gne gne.GNE) *web {
         		<option value="ftp">FTP</option>
     		</select></td></tr>
 			<tr><td>IP Address</td><td><input type="text" name="ipaddress" value=""/></td></tr>
-			<tr><td>Mac</td><td><input type="text" name="mac" value=""/></td></tr>
 			<tr><td>Username</td><td><input type="text" name="username" value=""/></td></tr>
-			<tr><td>Password</td><td><input type="text" name="password" value=""/></td></tr>
+			<tr><td>Password</td><td><input type="password" name="password" value=""/></td></tr>
 			<tr><td>Remote Folder</td><td><input type="text" name="remote" value=""/></td></tr>
-			<tr><td>Local Mounted Folder</td><td><input type="text" name="local" value=""/></td></tr>
 			<tr><td><input type="submit" name="submit" value="AddRemote"/></td><td></td></tr>
 			</table>
 		</form>
@@ -247,6 +255,12 @@ func Serve(gne gne.GNE) {
 	})
 	http.HandleFunc("/addlocalcall", func(w http.ResponseWriter, r *http.Request) {
 		this.handleAddLocalCall(w,r)
+	})
+	http.HandleFunc("/addusb", func(w http.ResponseWriter, r *http.Request) {
+		this.handleAddUSB(w,r)
+	})
+	http.HandleFunc("/addusbcall", func(w http.ResponseWriter, r *http.Request) {
+		this.handleAddUSBCall(w,r)
 	})
 	http.HandleFunc("/addremote", func(w http.ResponseWriter, r *http.Request) {
 		this.handleAddRemote(w,r)
@@ -392,6 +406,26 @@ func (this *web) handleAddLocalCall(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		this.redirectMan.Execute(w, slow)
 		this.error.Execute(w, fmt.Sprintf("unable to add local location: %v", err))
+	} else {
+		this.redirectMan.Execute(w, quick)
+	}
+	this.footer.Execute(w, nil)
+}
+
+func (this *web) handleAddUSB(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
+	this.addusb.Execute(w, nil)
+	this.footer.Execute(w, nil)
+}
+
+func (this *web) handleAddUSBCall(w http.ResponseWriter, r *http.Request) {
+	this.header.Execute(w, nil)
+	usb := r.FormValue("usb")
+	location := gne.NewUSBLocation(usb)
+	err := this.gne.AddLocation(location)
+	if err != nil {
+		this.redirectMan.Execute(w, slow)
+		this.error.Execute(w, fmt.Sprintf("unable to add usb location: %v", err))
 	} else {
 		this.redirectMan.Execute(w, quick)
 	}

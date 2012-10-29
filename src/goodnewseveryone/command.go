@@ -110,6 +110,14 @@ func newNMapCommand(ipAddress string) *command {
 	return newCommand("nmap", "-sP", ipAddress)
 }
 
+func newLSCommand(loc string) *command {
+	return newCommand("ls", loc)
+}
+
+func newMkdirCommand(loc string) *command {
+	return newCommand("mkdir", loc)
+}
+
 //TODO add mountpoint flag
 func newSyncCommand(loc1, loc2 string) *command {
 	return newCommand("unison", "-rsync=false", "-fastcheck=true", "-batch", "-dontchmod", "-perms", "0", loc1, loc2)
@@ -120,7 +128,7 @@ func newBackupCommand(loc1, loc2 string) *command {
 }
 
 func newMoveCommand(loc1, loc2 string) *command {
-	return newCommand("rsync", "--remove-source-files", loc1, loc2)
+	return newCommand("rsync", "-r", "--remove-source-files", loc1, loc2)
 }
 
 func newCifsMountCommand(ipAddress, remoteLoc, mountLoc, username, password string) *command {

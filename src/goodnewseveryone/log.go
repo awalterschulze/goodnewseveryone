@@ -7,6 +7,7 @@ import (
 	"time"
 	"path/filepath"
 	"io/ioutil"
+	"sort"
 )
 
 const DefaultTimeFormat = "2006-01-02T15:04:05Z"
@@ -110,19 +111,34 @@ func newLogFile(filename string) (*LogFile, error) {
 }
 
 type LogLine struct {
+	Number int
 	At time.Time
 	Line string
 }
 
+type LogLines []*LogLine
+
+func (this LogLines) Len() int {
+	return len(this)
+}
+
+func (this LogLines) Less(i, j int) bool {
+	return this[i].Number > this[j].Number
+}
+
+func (this LogLines) Swap(i, j int) {
+	this[i], this[j] = this[j], this[i]
+}
+
 type LogContent struct {
 	At time.Time
-	Lines []*LogLine
+	Lines LogLines
 }
 
 func (this *LogFile) Open() (*LogContent, error) {
 	content := &LogContent{
 		At: this.At,
-		Lines: make([]*LogLine, 0),
+		Lines: make(LogLines, 0),
 	}
 	data, err := ioutil.ReadFile(this.Filename)
 	if err != nil {
@@ -130,18 +146,20 @@ func (this *LogFile) Open() (*LogContent, error) {
 	}
 	dataStr := string(data)
 	lines := strings.Split(dataStr, "\n")
-	for _, line := range lines {
+	for i, line := range lines {
 		logLine := strings.SplitN(line, logLineSep, 2)
 		if len(logLine) == 2 {
 			t, err := time.Parse(DefaultTimeFormat, logLine[0])
 			if err == nil {
 				content.Lines = append(content.Lines, &LogLine{
+					Number: i,
 					At: t,
 					Line: logLine[1],
-				})	
+				})
 			}
 		}
 	}
+	sort.Sort(content.Lines)
 	return content, nil
 }
 	

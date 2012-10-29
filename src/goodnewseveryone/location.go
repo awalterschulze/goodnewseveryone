@@ -39,6 +39,12 @@ func configToLocations(log Log, configLoc string) (Locations, error) {
 			if err != nil {
 				return err
 			}
+		} else if strings.HasSuffix(path, ".usb.json") {
+			log.Write(fmt.Sprintf("USB Config: %v", path))
+			loc, err = configToUSBLocation(path)
+			if err != nil {
+				return err
+			}
 		}
 		if loc == nil {
 			return nil
@@ -92,6 +98,9 @@ type Location interface {
 	Id() LocationId
 	newLocateCommand() *command
 	located(log Log, output string) bool
+	newIsReadyCommand() *command
+	isReady(log Log, output string) bool
+	newReadyCommand() *command
 	newMountCommand() *command
 	newUmountCommand() *command
 	getLocal() string
@@ -104,6 +113,7 @@ type RemoteLocationType string
 var (
 	FTP = RemoteLocationType("ftp")
 	Samba = RemoteLocationType("smb")
+	USB = RemoteLocationType("usb")
 )
 
 var (
@@ -113,11 +123,9 @@ var (
 type RemoteLocation struct {
 	Type RemoteLocationType
 	IPAddress string
-	Mac string
 	Username string
 	Password string
 	Remote string
-	Local string
 }
 
 func configToRemoteLocation(filename string) (*RemoteLocation, error) {
@@ -139,11 +147,9 @@ func NewRemoteLocation(typ RemoteLocationType, ipaddress string, mac string, use
 	return &RemoteLocation{
 		typ,
 		ipaddress,
-		mac,
 		username,
 		password,
 		remote,
-		local,
 	}
 }
 
@@ -156,19 +162,30 @@ func (this *RemoteLocation) located(log Log, output string) bool {
 		log.Write(fmt.Sprintf("Cannot Locate %v", this))
 		return false
 	}
-	if !strings.Contains(strings.ToLower(output), strings.ToLower(this.Mac)) {
-		log.Write(fmt.Sprintf("Cannot Locate %v", this))
+	return true
+}
+
+func (this *RemoteLocation) newIsReadyCommand() *command {
+	return newLSCommand(this.getLocal())
+}
+
+func (this *RemoteLocation) isReady(log Log, output string) bool {
+	if strings.Contains(output, "No such file or directory") {
 		return false
 	}
 	return true
 }
 
+func (this *RemoteLocation) newReadyCommand() *command {
+	return newMkdirCommand(this.getLocal())
+}
+
 func (this *RemoteLocation) newMountCommand() *command {
 	switch this.Type {
 	case FTP:
-		return newFTPMountCommand(this.IPAddress, this.Remote, this.Local, this.Username, this.Password)
+		return newFTPMountCommand(this.IPAddress, this.Remote, this.getLocal(), this.Username, this.Password)
 	case Samba:
-		return newCifsMountCommand(this.IPAddress, this.Remote, this.Local, this.Username, this.Password)
+		return newCifsMountCommand(this.IPAddress, this.Remote, this.getLocal(), this.Username, this.Password)
 	}
 	panic("unreachable")
 }
@@ -176,24 +193,24 @@ func (this *RemoteLocation) newMountCommand() *command {
 func (this *RemoteLocation) newUmountCommand() *command {
 	switch this.Type {
 	case FTP:
-		return newFTPUmountCommand(this.Local)
+		return newFTPUmountCommand(this.getLocal())
 	case Samba:
-		return newCifsUmountCommand(this.Local)
+		return newCifsUmountCommand(this.getLocal())
 	}
 	panic("unreachable")
 }
 
 func (this *RemoteLocation) getLocal() string {
-	return this.Local
+	return "/media/" + string(this.Id())
 }
 
 func (this *RemoteLocation) String() string {
-	return "REMOTE=" + this.Mac + "-" + string(this.Type) + "//" + this.Remote
+	return "REMOTE=" + this.IPAddress + "-" + string(this.Type) + "//" + this.Remote
 }
 
 func (this *RemoteLocation) Id() LocationId {
-	return LocationId("REMOTE-" + string(this.Type) + "-" +
-		strings.Replace(this.Mac, ":", "-", -1) + 
+	return LocationId(string(this.Type) + "-" +
+		strings.Replace(this.IPAddress, ".", "-", -1) + 
 		"-" + 
 		strings.Replace(this.Remote, "/", "-", -1))
 }
@@ -249,6 +266,18 @@ func (this *LocalLocation) located(log Log, output string) bool {
 	return true
 }
 
+func (this *LocalLocation) newIsReadyCommand() *command {
+	return nil
+}
+
+func (this *LocalLocation) isReady(log Log, output string) bool {
+	return true
+}
+
+func (this *LocalLocation) newReadyCommand() *command {
+	return nil
+}
+
 func (this *LocalLocation) newMountCommand() *command {
 	return nil
 }
@@ -262,7 +291,7 @@ func (this *LocalLocation) getLocal() string {
 }
 
 func (this *LocalLocation) Id() LocationId {
-	return LocationId("LOCAL"+strings.Replace(this.Local, "/", "-", -1))
+	return LocationId(strings.Replace(this.Local, "/", "-", -1))
 }
 
 func (this *LocalLocation) filename() string {
@@ -281,5 +310,87 @@ func (this *LocalLocation) save() error {
 }
 
 func (this *LocalLocation) delete() error {
+	return os.Remove(this.filename())
+}
+
+type USBLocation struct {
+	Local string
+}
+
+func configToUSBLocation(filename string) (*USBLocation, error) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	usb := &USBLocation{}
+	if err := json.Unmarshal(data, &usb); err != nil {
+		return nil, err
+	}
+	return usb, nil
+}
+
+func NewUSBLocation(usb string) (*USBLocation) {
+	return &USBLocation{usb}
+}
+
+func (this *USBLocation) String() string {
+	return "USB=" + this.Local
+}
+
+func (this *USBLocation) newLocateCommand() *command {
+	return newLSCommand(this.Local)
+}
+
+func (this *USBLocation) located(log Log, output string) bool {
+	if strings.Contains(output, "No such file or directory") {
+		return false
+	}
+	return true
+}
+
+func (this *USBLocation) newIsReadyCommand() *command {
+	return nil
+}
+
+func (this *USBLocation) isReady(log Log, output string) bool {
+	return true
+}
+
+func (this *USBLocation) newReadyCommand() *command {
+	return nil
+}
+
+func (this *USBLocation) newMountCommand() *command {
+	return nil
+}
+
+func (this *USBLocation) newUmountCommand() *command {
+	return nil
+}
+
+func (this *USBLocation) getLocal() string {
+	return this.Local
+}
+
+func (this *USBLocation) Id() LocationId {
+	return LocationId(strings.Replace(this.Local, "/", "-", -1))
+}
+
+func (this *USBLocation) filename() string {
+	return fmt.Sprintf("%v.usb.json", this.Id())
+}
+
+func (this *USBLocation) save() error {
+	data, err := json.Marshal(this)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(this.filename(), data, 0666); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (this *USBLocation) delete() error {
 	return os.Remove(this.filename())
 }

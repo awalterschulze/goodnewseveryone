@@ -60,9 +60,21 @@ func (this *executor) one(log Log, kernel *kernel, locations Locations, task Tas
 		log.Error(errUnknownLocation)
 		return errUnknownLocation
 	}
+	output, err := kernel.run(log, src.newIsReadyCommand())
+	if err != nil || !src.isReady(log, output) {
+		if _, err := kernel.run(log, src.newReadyCommand()); err != nil {
+			return err
+		}
+	}
+	output, err = kernel.run(log, dst.newIsReadyCommand())
+	if err != nil || !dst.isReady(log, output) {
+		if _, err := kernel.run(log, dst.newReadyCommand()); err != nil {
+			return err
+		}
+	}
 	kernel.overrun(log, src.newUmountCommand())
 	kernel.overrun(log, dst.newUmountCommand())
-	output, err := kernel.run(log, src.newLocateCommand())
+	output, err = kernel.run(log, src.newLocateCommand())
 	if err != nil {
 		return err
 	}
