@@ -119,8 +119,12 @@ func newMkdirCommand(loc string) *command {
 }
 
 //TODO add mountpoint flag
+//http://stephen.rees-carter.net/2011/03/getting-unison-and-samba-to-play-nice/
+//http://www.cis.upenn.edu/~bcpierce/unison/download/releases/stable/unison-manual.html#fastcheck
+//http://www.cis.upenn.edu/~bcpierce/unison/download/releases/stable/unison-manual.html#mountpoints
+//-batch             batch mode: ask no questions at all
 func newSyncCommand(loc1, loc2 string) *command {
-	return newCommand("unison", "-rsync=false", "-fastcheck=true", "-batch", "-dontchmod", "-perms", "0", loc1, loc2)
+	return newCommand("unison", "-fastcheck true", "-mountpoint " + loc1, "-mountpoint " + loc2,"-batch", "-dontchmod", "-perms", "0", loc1, loc2)
 }
 
 func newBackupCommand(loc1, loc2 string) *command {

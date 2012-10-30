@@ -162,6 +162,7 @@ func (this *gne) GetDiffs() (DiffsPerLocation, error) {
 
 func (this *gne) Start() {
 	waitChan := time.After(1)
+	//TODO executor.All should run in a go routine
 	for {
 		select {
 		case <- waitChan:

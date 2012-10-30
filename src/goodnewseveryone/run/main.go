@@ -6,6 +6,9 @@ import (
 	"flag"
 )
 
+//windows 7 registry fix
+//http://alan.lamielle.net/2009/09/03/windows-7-nonpaged-pool-srv-error-2017
+
 var (
 	configLocation = "."
 )
