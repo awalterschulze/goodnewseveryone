@@ -205,14 +205,14 @@ func (this *RemoteLocation) getLocal() string {
 }
 
 func (this *RemoteLocation) String() string {
-	return "REMOTE=" + this.IPAddress + "-" + string(this.Type) + "//" + this.Remote
+	return "REMOTE=" + this.IPAddress + "_" + string(this.Type) + "//" + this.Remote
 }
 
 func (this *RemoteLocation) Id() LocationId {
-	return LocationId(string(this.Type) + "-" +
-		strings.Replace(this.IPAddress, ".", "-", -1) + 
-		"-" + 
-		strings.Replace(this.Remote, "/", "-", -1))
+	return LocationId(string(this.Type) + "_" +
+		strings.Replace(this.IPAddress, ".", "_", -1) + 
+		"_" + 
+		strings.Replace(this.Remote, "/", "_", -1))
 }
 
 func (this *RemoteLocation) filename() string {
@@ -291,7 +291,7 @@ func (this *LocalLocation) getLocal() string {
 }
 
 func (this *LocalLocation) Id() LocationId {
-	return LocationId(strings.Replace(this.Local, "/", "-", -1))
+	return LocationId(strings.Replace(this.Local, "/", "_", -1))
 }
 
 func (this *LocalLocation) filename() string {
@@ -373,7 +373,7 @@ func (this *USBLocation) getLocal() string {
 }
 
 func (this *USBLocation) Id() LocationId {
-	return LocationId(strings.Replace(this.Local, "/", "-", -1))
+	return LocationId(strings.Replace(this.Local, "/", "_", -1))
 }
 
 func (this *USBLocation) filename() string {

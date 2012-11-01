@@ -124,7 +124,7 @@ func newMkdirCommand(loc string) *command {
 //http://www.cis.upenn.edu/~bcpierce/unison/download/releases/stable/unison-manual.html#mountpoints
 //-batch             batch mode: ask no questions at all
 func newSyncCommand(loc1, loc2 string) *command {
-	return newCommand("unison", "-fastcheck true", "-mountpoint " + loc1, "-mountpoint " + loc2,"-batch", "-dontchmod", "-perms", "0", loc1, loc2)
+	return newCommand("unison", "-fastcheck=true","-batch", "-dontchmod", "-perms", "0", loc1, loc2)
 }
 
 func newBackupCommand(loc1, loc2 string) *command {
@@ -136,7 +136,7 @@ func newMoveCommand(loc1, loc2 string) *command {
 }
 
 func newCifsMountCommand(ipAddress, remoteLoc, mountLoc, username, password string) *command {
-	return newCensoredCommand("mount", "-t", "cifs", "//" + ipAddress + "/" + remoteLoc, mountLoc, "-o", "username="+username+",password="+password)
+	return newCensoredCommand("mount", "-t", "cifs", "//" + ipAddress + "/" + remoteLoc, mountLoc, "-o", "username="+username+",password="+password+",nounix,noserverino,sec=ntlmssp")
 }
 
 func newCifsUmountCommand(loc string) *command {
