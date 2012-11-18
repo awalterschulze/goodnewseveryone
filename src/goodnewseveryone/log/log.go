@@ -1,12 +1,9 @@
-package goodnewseveryone
+package log
 
 import (
-	"os"
 	"strings"
 	"fmt"
 	"time"
-	"path/filepath"
-	"io/ioutil"
 	"sort"
 )
 
@@ -14,7 +11,17 @@ const DefaultTimeFormat = "2006-01-02T15:04:05Z"
 const logLineSep = " | "
 
 type log struct {
-	f *os.File
+	store LogStore
+	sessionKey time.Time
+}
+
+type LogStore interface {
+	NewLogSession(key time.Time) error
+	ListLogSessions() []time.Time
+	ReadFromLogSession(key time.Time) ([]time.Time, []string, error)
+	WriteToLogSession(key time.Time, line string) error
+	DeleteLogSession(key time.Time) error
+	CloseLogSession(key time.Time) error
 }
 
 type Log interface {
@@ -25,12 +32,12 @@ type Log interface {
 	Close()
 }
 
-func newLog() (Log, error) {
-	logFile, err := os.Create(fmt.Sprintf("gne-%v.log", time.Now().Format(DefaultTimeFormat)))
+func NewLog(now time.Time, store LogStore) (Log, error) {
+	err := store.NewLogSession(now)
 	if err != nil {
 		return nil, err
 	}
-	return &log{logFile}, nil
+	return &log{store, now}, nil
 }
 
 func (this *log) Write(str string) {
@@ -39,9 +46,8 @@ func (this *log) Write(str string) {
 		ss := strings.Split(line, "\r")
 		for _, s := range ss {
 			if len(strings.TrimSpace(s)) > 0 {
-				str := fmt.Sprintf("%v%v%v\n", time.Now().Format(DefaultTimeFormat), logLineSep, s)
-				this.f.Write([]byte(str))
-				fmt.Printf("%v", str)
+				this.store.WriteToLogSession(this.sessionKey, strings.TrimSpace(s))
+				fmt.Printf("%v\n", strings.TrimSpace(s))
 			}	
 		}
 	}
@@ -60,7 +66,7 @@ func (this *log) Output(output []byte) {
 }
 
 func (this *log) Close() {
-	this.f.Close()
+	this.store.CloseLogSession(this.sessionKey)
 }
 
 type LogFiles []*LogFile
@@ -77,37 +83,22 @@ func (this LogFiles) Less(i, j int) bool {
 	return this[i].At.After(this[j].At)
 }
 
-func NewLogFiles(root string) (LogFiles, error) {
-	filenames := []string{}
-	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if strings.HasSuffix(path, ".log") {
-			filenames = append(filenames, path)
-		}
-		return nil
-	})
-	res := make(LogFiles, len(filenames))
-  	for i, filename := range filenames {
-  		l, err := newLogFile(filename)
-  		if err != nil {
-  			return nil, err
-  		}
-  		res[i] = l
+func NewLogFiles(store LogStore) (LogFiles, error) {
+	times := store.ListLogSessions()
+	res := make(LogFiles, len(times))
+  	for i, t := range times {
+  		res[i] = newLogFile(store, t)
   	}
   	return res, nil
 }
 
 type LogFile struct {
-	Filename string
+	store LogStore
 	At time.Time
 }
 
-func newLogFile(filename string) (*LogFile, error) {
-	timeStr := strings.Replace(strings.Replace(filename, "gne-", "", 1), ".log", "", 1)
-	t, err := time.Parse(DefaultTimeFormat, timeStr)
-	if err != nil {
-		return nil, err
-	}
-	return &LogFile{filename, t}, nil
+func newLogFile(store LogStore, at time.Time) *LogFile {
+	return &LogFile{store, at}
 }
 
 type LogLine struct {
@@ -136,28 +127,20 @@ type LogContent struct {
 }
 
 func (this *LogFile) Open() (*LogContent, error) {
+	ts, cs, err := this.store.ReadFromLogSession(this.At)
+	if err != nil {
+		return nil, err
+	}
 	content := &LogContent{
 		At: this.At,
 		Lines: make(LogLines, 0),
 	}
-	data, err := ioutil.ReadFile(this.Filename)
-	if err != nil {
-		return nil, err
-	}
-	dataStr := string(data)
-	lines := strings.Split(dataStr, "\n")
-	for i, line := range lines {
-		logLine := strings.SplitN(line, logLineSep, 2)
-		if len(logLine) == 2 {
-			t, err := time.Parse(DefaultTimeFormat, logLine[0])
-			if err == nil {
-				content.Lines = append(content.Lines, &LogLine{
-					Number: i,
-					At: t,
-					Line: logLine[1],
-				})
-			}
-		}
+	for i := 0; i < len(ts); i++ {
+		content.Lines = append(content.Lines, &LogLine{
+			Number: i,
+			At: ts[i],
+			Line: cs[i],
+		})
 	}
 	sort.Sort(content.Lines)
 	return content, nil
