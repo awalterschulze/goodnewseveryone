@@ -64,6 +64,10 @@ type TaskStore interface {
 	RemoveTaskCompleted(taskId string, then time.Time) error
 }
 
+var (
+	ErrRemoteLocationTypeDoesNotExist = errors.New("Remote Location Type does not exist")
+)
+
 type LocationStore interface {
 	ListLocalLocations() (names []string, err error)
 	ReadLocalLocation(name string) (local string, err error)

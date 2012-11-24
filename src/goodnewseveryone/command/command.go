@@ -20,9 +20,12 @@ import (
 	"sync"
 	"io"
 	"bytes"
+	"goodnewseveryone/log"
+	"strings"
+	"fmt"
 )
 
-func read(log Log, w io.Writer, r *bufio.Reader) {
+func read(log log.Log, w io.Writer, r *bufio.Reader) {
 	for {
 		line, _, err := r.ReadLine()
 		if err != nil && err != io.EOF {
@@ -37,6 +40,12 @@ func read(log Log, w io.Writer, r *bufio.Reader) {
 			return
 		}
 	}
+}
+
+type Command interface {
+	Run(log log.Log) ([]byte, error)
+	Start(log log.Log, output io.Writer) error
+	Stop(log log.Log)
 }
 
 type command struct {
@@ -63,7 +72,37 @@ func newCensoredCommand(name string, args ...string) *command {
 	}	
 }
 
-func (this *command) stop(log Log) {
+func newCustomCensoredCommand(f string, args ...string) *command {
+	c := fmt.Sprintf(f, args)
+	ss := strings.Split(c, " ")
+	name := ss[0]
+	a := []string{}
+	if len(ss) > 1 {
+		a = ss[1:]
+	}
+	return &command{
+		name: name,
+		args: a,
+		censoredArgs: true,
+	}
+}
+
+func newCustomCommand(f string, args ...string) *command {
+	c := fmt.Sprintf(f, args)
+	ss := strings.Split(c, " ")
+	name := ss[0]
+	a := []string{}
+	if len(ss) > 1 {
+		a = ss[1:]
+	}
+	return &command{
+		name: name,
+		args: a,
+		censoredArgs: false,
+	}
+}
+
+func (this *command) Stop(log log.Log) {
 	this.Lock()
 	defer this.Unlock()
 	if this.cmd == nil {
@@ -79,7 +118,7 @@ func (this *command) stop(log Log) {
 	return
 }
 
-func (this *command) start(log Log, output io.Writer) error {
+func (this *command) Start(log log.Log, output io.Writer) error {
 	this.Lock()
 	defer this.Unlock()
 	if this.censoredArgs {
@@ -106,9 +145,9 @@ func (this *command) start(log Log, output io.Writer) error {
    	return nil
 }
 
-func (this *command) run(log Log) ([]byte, error) {
+func (this *command) Run(log log.Log) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
-	err := this.start(log, buf)
+	err := this.Start(log, buf)
 	if err != nil {
 		log.Error(err)
 		return nil, err
@@ -120,15 +159,15 @@ func (this *command) run(log Log) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func newNMapCommand(ipAddress string) *command {
+func NewNMap(ipAddress string) *command {
 	return newCommand("nmap", "-sP", ipAddress)
 }
 
-func newLSCommand(loc string) *command {
+func NewLS(loc string) *command {
 	return newCommand("ls", loc)
 }
 
-func newMkdirCommand(loc string) *command {
+func NewMkdir(loc string) *command {
 	return newCommand("mkdir", loc)
 }
 
@@ -136,30 +175,38 @@ func newMkdirCommand(loc string) *command {
 //http://stephen.rees-carter.net/2011/03/getting-unison-and-samba-to-play-nice/
 //http://www.cis.upenn.edu/~bcpierce/unison/download/releases/stable/unison-manual.html#fastcheck
 //-batch             batch mode: ask no questions at all
-func newSyncCommand(loc1, loc2 string) *command {
+func NewSync(loc1, loc2 string) *command {
 	return newCommand("unison", "-fastcheck", "true","-batch", "-dontchmod", "-perms", "0", loc1, loc2)
 }
 
-func newBackupCommand(loc1, loc2 string) *command {
+func NewBackup(loc1, loc2 string) *command {
 	return newCommand("rdiff-backup", loc1, loc2)
 }
 
-func newMoveCommand(loc1, loc2 string) *command {
+func NewMove(loc1, loc2 string) *command {
 	return newCommand("rsync", "-r", "--remove-source-files", loc1, loc2)
 }
 
-func newCifsMountCommand(ipAddress, remoteLoc, mountLoc, username, password string) *command {
+func NewMount(mount, ipAddress, username, password, remoteLoc, mountLoc string) *command {
+	return newCustomCensoredCommand(mount, username, password, ipAddress, remoteLoc, mountLoc)
+}
+
+func NewUnmount(unmount, mountLoc string) *command {
+	return newCustomCommand(unmount, mountLoc)
+}
+
+/*func NewCifsMount(ipAddress, remoteLoc, mountLoc, username, password string) *command {
 	return newCensoredCommand("mount", "-t", "cifs", "//" + ipAddress + "/" + remoteLoc, mountLoc, "-o", "username="+username+",password="+password+",nounix,noserverino,sec=ntlmssp")
 }
 
-func newCifsUmountCommand(loc string) *command {
+func NewCifsUmount(loc string) *command {
 	return newCommand("umount", "-l", loc)	
 }
 
-func newFTPMountCommand(ipAddress, remoteLoc, mountLoc, username, password string) *command {
+func NewFTPMount(ipAddress, remoteLoc, mountLoc, username, password string) *command {
 	return newCensoredCommand("curlftpfs", username+":"+password+"@"+ipAddress+"/"+remoteLoc, mountLoc)
 }
 
-func newFTPUmountCommand(loc string) *command {
+func NewFTPUmount(loc string) *command {
 	return newCommand("fusermount", "-u", loc)
-}
+}*/
