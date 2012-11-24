@@ -1,3 +1,17 @@
+//Copyright 2012 Walter Schulze
+//
+//Licensed under the Apache License, Version 2.0 (the "License");
+//you may not use this file except in compliance with the License.
+//You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+//Unless required by applicable law or agreed to in writing, software
+//distributed under the License is distributed on an "AS IS" BASIS,
+//WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//See the License for the specific language governing permissions and
+//limitations under the License.
+
 package log
 
 import (
@@ -5,23 +19,15 @@ import (
 	"fmt"
 	"time"
 	"sort"
+	"goodnewseveryone/store"
 )
 
 const DefaultTimeFormat = "2006-01-02T15:04:05Z"
 const logLineSep = " | "
 
 type log struct {
-	store LogStore
+	store store.LogStore
 	sessionKey time.Time
-}
-
-type LogStore interface {
-	NewLogSession(key time.Time) error
-	ListLogSessions() []time.Time
-	ReadFromLogSession(key time.Time) ([]time.Time, []string, error)
-	WriteToLogSession(key time.Time, line string) error
-	DeleteLogSession(key time.Time) error
-	CloseLogSession(key time.Time) error
 }
 
 type Log interface {
@@ -32,7 +38,7 @@ type Log interface {
 	Close()
 }
 
-func NewLog(now time.Time, store LogStore) (Log, error) {
+func NewLog(now time.Time, store store.LogStore) (Log, error) {
 	err := store.NewLogSession(now)
 	if err != nil {
 		return nil, err
@@ -69,36 +75,36 @@ func (this *log) Close() {
 	this.store.CloseLogSession(this.sessionKey)
 }
 
-type LogFiles []*LogFile
+type LogContens []*LogContent
 
-func (this LogFiles) Len() int {
+func (this LogContens) Len() int {
 	return len(this)
 }
 
-func (this LogFiles) Swap(i, j int) {
+func (this LogContens) Swap(i, j int) {
 	this[i], this[j] = this[j], this[i]
 }
 
-func (this LogFiles) Less(i, j int) bool {
+func (this LogContens) Less(i, j int) bool {
 	return this[i].At.After(this[j].At)
 }
 
-func NewLogFiles(store LogStore) (LogFiles, error) {
+func NewLogContents(store store.LogStore) (LogContens, error) {
 	times := store.ListLogSessions()
-	res := make(LogFiles, len(times))
+	res := make(LogContens, len(times))
   	for i, t := range times {
-  		res[i] = newLogFile(store, t)
+  		res[i] = newLogContent(store, t)
   	}
   	return res, nil
 }
 
-type LogFile struct {
-	store LogStore
+type LogContent struct {
+	store store.LogStore
 	At time.Time
 }
 
-func newLogFile(store LogStore, at time.Time) *LogFile {
-	return &LogFile{store, at}
+func newLogContent(store store.LogStore, at time.Time) *LogContent {
+	return &LogContent{store, at}
 }
 
 type LogLine struct {
@@ -121,17 +127,17 @@ func (this LogLines) Swap(i, j int) {
 	this[i], this[j] = this[j], this[i]
 }
 
-type LogContent struct {
+type LogOpenContent struct {
 	At time.Time
 	Lines LogLines
 }
 
-func (this *LogFile) Open() (*LogContent, error) {
+func (this *LogContent) Open() (*LogOpenContent, error) {
 	ts, cs, err := this.store.ReadFromLogSession(this.At)
 	if err != nil {
 		return nil, err
 	}
-	content := &LogContent{
+	content := &LogOpenContent{
 		At: this.At,
 		Lines: make(LogLines, 0),
 	}
