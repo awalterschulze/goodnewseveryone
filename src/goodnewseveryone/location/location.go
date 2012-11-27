@@ -15,17 +15,11 @@
 package location
 
 import (
-	"errors"
 	"strings"
 	"fmt"
 	gstore "goodnewseveryone/store"
 	"goodnewseveryone/log"
 	"goodnewseveryone/command"
-)
-
-var (
-	errDuplicateLocation = errors.New("Duplicate Location")
-	errUnknownLocation = errors.New("Unknown Location")
 )
 
 type LocationId string
@@ -101,7 +95,7 @@ func NewLocations(log log.Log, store Store) (Locations, error) {
 
 func (locations Locations) Remove(store Store, locId LocationId) error {
 	if _, ok := locations[locId]; !ok {
-		return errUnknownLocation
+		return gstore.ErrLocationDoesNotExist
 	}
 	if err := locations[locId].delete(store); err != nil {
 		return err
@@ -112,7 +106,7 @@ func (locations Locations) Remove(store Store, locId LocationId) error {
 
 func (locations Locations) Add(store Store, loc Location) error {
 	if _, ok := locations[loc.Id()]; ok {
-		return errDuplicateLocation
+		return gstore.ErrLocationAlreadyExists
 	}
 	err := loc.save(store)
 	if err != nil {
@@ -140,7 +134,7 @@ type Location interface {
 	NewPrepareCommand() command.Command
 	NewMountCommand() command.Command
 	NewUmountCommand() command.Command
-	getLocal() string
+	GetLocal() string
 	save(store Store) error
 	delete(store Store) error
 }
@@ -192,7 +186,7 @@ func (this *RemoteLocation) Located(log log.Log, output string) bool {
 }
 
 func (this *RemoteLocation) NewPreparedCommand() command.Command {
-	return command.NewLS(this.getLocal())
+	return command.NewLS(this.GetLocal())
 }
 
 func (this *RemoteLocation) Prepared(log log.Log, output string) bool {
@@ -203,18 +197,18 @@ func (this *RemoteLocation) Prepared(log log.Log, output string) bool {
 }
 
 func (this *RemoteLocation) NewPrepareCommand() command.Command {
-	return command.NewMkdir(this.getLocal())
+	return command.NewMkdir(this.GetLocal())
 }
 
 func (this *RemoteLocation) NewMountCommand() command.Command {
-	return command.NewMount(this.Mount, this.IPAddress, this.Username, this.Password, this.Remote, this.getLocal())
+	return command.NewMount(this.Mount, this.IPAddress, this.Username, this.Password, this.Remote, this.GetLocal())
 }
 
 func (this *RemoteLocation) NewUmountCommand() command.Command {
-	return command.NewUnmount(this.Unmount, this.getLocal())
+	return command.NewUnmount(this.Unmount, this.GetLocal())
 }
 
-func (this *RemoteLocation) getLocal() string {
+func (this *RemoteLocation) GetLocal() string {
 	return this.MountFolder + "/" + string(this.Id())
 }
 
@@ -271,7 +265,7 @@ func (this *LocalLocation) NewUmountCommand() command.Command {
 	return nil
 }
 
-func (this *LocalLocation) getLocal() string {
+func (this *LocalLocation) GetLocal() string {
 	return this.Local
 }
 

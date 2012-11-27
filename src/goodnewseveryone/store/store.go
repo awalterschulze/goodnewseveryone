@@ -65,6 +65,8 @@ type TaskStore interface {
 }
 
 var (
+	ErrLocationDoesNotExist = errors.New("Location does not exist")
+	ErrLocationAlreadyExists = errors.New("Location already exists")
 	ErrRemoteLocationTypeDoesNotExist = errors.New("Remote Location Type does not exist")
 )
 

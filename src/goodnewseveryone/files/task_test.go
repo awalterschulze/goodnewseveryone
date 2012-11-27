@@ -107,7 +107,7 @@ func TestCompleted(t *testing.T) {
 	if len(ts) != 1 {
 		t.Fatalf("completed task not found = %v", ts)
 	}
-	if err := f.RemoveTaskCompleted(task, now); err != nil {
+	if err := f.RemoveTaskCompleted(task, ts[0]); err != nil {
 		panic(err)
 	}
 	ts, err = f.ListTaskCompleted(task)

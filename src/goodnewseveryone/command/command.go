@@ -56,23 +56,7 @@ type command struct {
 	cmd *exec.Cmd
 }
 
-func newCommand(name string, args ...string) *command {
-	return &command{
-		name: name,
-		args: args,
-		censoredArgs: false,
-	}
-}
-
-func newCensoredCommand(name string, args ...string) *command {
-	return &command{
-		name: name,
-		args: args,
-		censoredArgs: true,
-	}	
-}
-
-func newCustomCensoredCommand(f string, args ...string) *command {
+func NewCommand(f string, args ...string) *command {
 	c := fmt.Sprintf(f, args)
 	ss := strings.Split(c, " ")
 	name := ss[0]
@@ -83,23 +67,13 @@ func newCustomCensoredCommand(f string, args ...string) *command {
 	return &command{
 		name: name,
 		args: a,
-		censoredArgs: true,
 	}
 }
 
-func newCustomCommand(f string, args ...string) *command {
-	c := fmt.Sprintf(f, args)
-	ss := strings.Split(c, " ")
-	name := ss[0]
-	a := []string{}
-	if len(ss) > 1 {
-		a = ss[1:]
-	}
-	return &command{
-		name: name,
-		args: a,
-		censoredArgs: false,
-	}
+func NewCensoredCommand(f string, args ...string) *command {
+	cmd := NewCommand(f, args...)
+	cmd.censoredArgs = true
+	return cmd
 }
 
 func (this *command) Stop(log log.Log) {
@@ -160,22 +134,22 @@ func (this *command) Run(log log.Log) ([]byte, error) {
 }
 
 func NewNMap(ipAddress string) *command {
-	return newCommand("nmap", "-sP", ipAddress)
+	return NewCommand("nmap -sP %v", ipAddress)
 }
 
 func NewLS(loc string) *command {
-	return newCommand("ls", loc)
+	return NewCommand("ls %v", loc)
 }
 
 func NewMkdir(loc string) *command {
-	return newCommand("mkdir", loc)
+	return NewCommand("mkdir %v", loc)
 }
 
 //TODO add mountpoint flag
 //http://stephen.rees-carter.net/2011/03/getting-unison-and-samba-to-play-nice/
 //http://www.cis.upenn.edu/~bcpierce/unison/download/releases/stable/unison-manual.html#fastcheck
 //-batch             batch mode: ask no questions at all
-func NewSync(loc1, loc2 string) *command {
+/*func NewSync(loc1, loc2 string) *command {
 	return newCommand("unison", "-fastcheck", "true","-batch", "-dontchmod", "-perms", "0", loc1, loc2)
 }
 
@@ -185,14 +159,14 @@ func NewBackup(loc1, loc2 string) *command {
 
 func NewMove(loc1, loc2 string) *command {
 	return newCommand("rsync", "-r", "--remove-source-files", loc1, loc2)
-}
+}*/
 
 func NewMount(mount, ipAddress, username, password, remoteLoc, mountLoc string) *command {
-	return newCustomCensoredCommand(mount, username, password, ipAddress, remoteLoc, mountLoc)
+	return NewCensoredCommand(mount, username, password, ipAddress, remoteLoc, mountLoc)
 }
 
 func NewUnmount(unmount, mountLoc string) *command {
-	return newCustomCommand(unmount, mountLoc)
+	return NewCommand(unmount, mountLoc)
 }
 
 /*func NewCifsMount(ipAddress, remoteLoc, mountLoc, username, password string) *command {
