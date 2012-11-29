@@ -15,20 +15,16 @@
 package diff
 
 import (
+	"sort"
+	"time"
+	"goodnewseveryone/store"
 	"path/filepath"
 	"os"
-	"sort"
-	"io/ioutil"
-	"io"
-	"strings"
-	"time"
-	"fmt"
-	"errors"
 )
 
-type filelist map[string]bool
+type filemap map[string]bool
 
-func (this filelist) list() []string {
+func (this filemap) list() []string {
 	l := make([]string, 0, len(this))
 	for filename, _ := range this {
 		l = append(l, filename)
@@ -37,162 +33,92 @@ func (this filelist) list() []string {
 	return l
 }
 
-func (this filelist) writeTo(writer io.Writer) {
-	for _, filename := range this.list() {
-		writer.Write([]byte(filename+"\n"))
-	}
-}
-
-func createList(locationKey string) (*os.File, error) {
-	return os.Create(fmt.Sprintf("gne-_-%v-_-%v.list", locationKey, time.Now().Format(DefaultTimeFormat)))
-}
-
-func writeList(location Location) (error) {
-	list, err := newFilelist(location.getLocal())
-	if err != nil {
-		return err
-	}
-	file, err := createList(string(location.Id()))
-	if err != nil {
-		return err
-	}
-	list.writeTo(file)
-	return file.Close()
-}
-
-func newFilelist(location string) (filelist, error) {
-	files := make(filelist)
-	err := filepath.Walk(location, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		files[path] = true
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return files, nil
-}
-
-type FileListFile struct {
-	Filename string
+type fileList struct {
 	Location string
 	At time.Time
 }
 
-func newFileListFile(filename string) (*FileListFile, error) {
-	dataStr := strings.Replace(strings.Replace(filename, "gne-_-", "", 1), ".list", "", 1)
-	dataStrs := strings.Split(dataStr, "-_-")
-	if len(dataStrs) != 2 {
-		return nil, errors.New("filename is not formatted correctly")
-	}
-	timeStr := dataStrs[1]
-	location := dataStrs[0]
-	t, err := time.Parse(DefaultTimeFormat, timeStr)
-	if err != nil {
-		return nil, err
-	}
-	return &FileListFile{filename, location, t}, nil
+func newFileList(location string, at time.Time) *fileList {
+	return &fileList{location, at}
 }
 
-func readFilelist(reader io.Reader) (filelist, error) {
-	data, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-	lines := strings.Split(string(data), "\n")
-	list := make(filelist)
-	for _, line := range lines {
-		list[line] = true
-	}
-	return list, nil
-}
+type fileLists []*fileList
 
-func (this *FileListFile) Read() ([]string, error) {
-	file, err := os.Open(this.Filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	filelist, err := readFilelist(file)
-	if err != nil {
-		return nil, err
-	}
-	return filelist.list(), nil
-}
-
-type FileLists []*FileListFile
-
-func (this FileLists) Len() int {
+func (this fileLists) Len() int {
 	return len(this)
 }
 
-func (this FileLists) Swap(i, j int) {
+func (this fileLists) Swap(i, j int) {
 	this[i], this[j] = this[j], this[i]
 }
 
-func (this FileLists) Less(i, j int) bool {
+func (this fileLists) Less(i, j int) bool {
 	return this[i].At.After(this[j].At)
 }
 
-func NewFileLists(root string) (FileLists, error) {
-	filenames := []string{}
-	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if strings.HasSuffix(path, ".list") {
-			filenames = append(filenames, path)
+func newFileLists(store store.FilelistStore) (fileLists, error) {
+	locations, times, err := store.ListFilelists()
+	if err != nil {
+		return nil, err
+	}
+	lists := make(fileLists, len(locations))
+	for i := range locations {
+		lists[i] = newFileList(locations[i], times[i])
+	}
+	return lists, nil
+}
+
+func CreateFilelist(location string) ([]string, error) {
+	files := []string{}
+	err := filepath.Walk(location, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
 		}
+		files = append(files, path)
 		return nil
 	})
-	res := make(FileLists, len(filenames))
-  	for i, filename := range filenames {
-  		l, err := newFileListFile(filename)
-  		if err != nil {
-  			return nil, err
-  		}
-  		res[i] = l
-  	}
-  	return res, nil
+	return files, err
+}
+
+func SaveFilelist(store store.FilelistStore, location string, at time.Time, files []string) error {
+	return store.AddFilelist(location, at, files)
 }
 
 type Diff struct {
-	At time.Time
-	CurrentFilename string
-	PreviousFilename string
+	store store.FilelistStore
+	Previous time.Time
+	Current time.Time
+	Location string
 }
 
-func diffFilelist(oldList filelist, newList filelist) (created filelist, deleted filelist) {
-	created = make(filelist)
-	deleted = make(filelist)
-	for newFile, _ := range newList {
-		if _, ok := oldList[newFile]; !ok {
-			created[newFile] = true
+func diffFilelist(oldList []string, newList []string) (created filemap, deleted filemap) {
+	created = make(filemap)
+	deleted = make(filemap)
+	for _, newFile := range newList {
+		created[newFile] = true
+	}
+	for _, oldFile := range oldList {
+		if _, ok := created[oldFile]; ok {
+			delete(created, oldFile)
 		}
 	}
-	for oldFile, _ := range oldList {
-		if _, ok := newList[oldFile]; !ok {
-			deleted[oldFile] = true
+	for _, oldFile := range oldList {
+		deleted[oldFile] = true
+	}
+	for _, newFile := range newList {
+		if _, ok := deleted[newFile]; ok {
+			delete(deleted, newFile)
 		}
 	}
 	return
 }
 
 func (this *Diff) Take() (created []string, deleted []string, err error) {
-	curfile, err := os.Open(this.CurrentFilename)
+	prevList, err := this.store.ReadFilelist(this.Location, this.Previous)
 	if err != nil {
 		return nil, nil, err
 	}
-	defer curfile.Close()
-	curList, err := readFilelist(curfile)
-	if err != nil {
-		return nil, nil, err
-	}
-	prevfile, err := os.Open(this.PreviousFilename)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer prevfile.Close()
-	prevList, err := readFilelist(prevfile)
+	curList, err := this.store.ReadFilelist(this.Location, this.Current)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -211,13 +137,13 @@ func (this Diffs) Swap(i, j int) {
 }
 
 func (this Diffs) Less(i, j int) bool {
-	return this[i].At.After(this[j].At)
+	return this[i].Current.After(this[j].Current)
 }
 
 type DiffsPerLocation map[string]Diffs
 
-func NewDiffsPerLocation(root string) (DiffsPerLocation, error) {
-	filelists, err := NewFileLists(root)
+func NewDiffsPerLocation(store store.FilelistStore) (DiffsPerLocation, error) {
+	filelists, err := newFileLists(store)
 	if err != nil {
 		return nil, err
 	}
@@ -228,16 +154,20 @@ func NewDiffsPerLocation(root string) (DiffsPerLocation, error) {
 		if lastIndex == -1 {
 			diffs[filelist.Location] = make(Diffs, 0)
 		} else {
-			diffs[filelist.Location][lastIndex].PreviousFilename = filelist.Filename
+			diffs[filelist.Location][lastIndex].Previous = filelist.At
 		}
 		diffs[filelist.Location] = append(diffs[filelist.Location], &Diff{
-			CurrentFilename: filelist.Filename,
-			At: filelist.At,
+			store: store,
+			Current: filelist.At,
+			Location: filelist.Location,
 		})
 	}
 	for loc, _ := range diffs {
 		if len(diffs[loc]) > 0 {
 			diffs[loc] = diffs[loc][:len(diffs[loc])-1]
+		}
+		if len(diffs[loc]) == 0 {
+			delete(diffs, loc)
 		}
 	}
 	return diffs, nil
