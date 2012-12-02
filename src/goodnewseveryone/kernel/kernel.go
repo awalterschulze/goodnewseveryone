@@ -12,60 +12,72 @@
 //See the License for the specific language governing permissions and
 //limitations under the License.
 
-package goodnewseveryone
+package kernel
 
 import (
 	"sync"
 	"errors"
+	"goodnewseveryone/command"
+	"goodnewseveryone/log"
 )
 
 var (
-	errPaused = errors.New("Paused")
+	ErrPaused = errors.New("Kernel is Paused")
 )
+
+type Kernel interface {
+	Blocked() bool
+	StopAndBlock(log log.Log)
+	Unblock()
+	Run(log log.Log, command command.Command) (string, error)
+	//run even if blocked, used for umounts
+	SudoRun(log log.Log, command command.Command)
+}
 
 type kernel struct {
 	sync.Mutex
-	running *command
-	paused bool
+	running command.Command
+	blocked bool
 }
 
-func newKernel() *kernel {
+func NewKernel() Kernel {
 	return &kernel{}
 }
 
-func (this *kernel) ready() bool {
+func (this *kernel) Blocked() bool {
 	this.Lock()
 	defer this.Unlock()
-	return !this.paused
+	return this.blocked
 }
 
-func (this *kernel) restart() {
+func (this *kernel) Unblock() {
 	this.Lock()
-	this.paused = false
+	this.blocked = false
 	this.Unlock()
 }
 
-func (this *kernel) stop(log Log) {
+func (this *kernel) StopAndBlock(log log.Log) {
 	this.Lock()
-	this.paused = true
+	this.blocked = true
 	if this.running != nil {
-		this.running.stop(log)
+		this.running.Stop(log)
 	}
+	this.running = nil
 	this.Unlock()
 }
 
-func (this *kernel) run(log Log, command *command) (string, error) {
+func (this *kernel) Run(log log.Log, command command.Command) (string, error) {
 	this.Lock()
-	if this.paused {
-		this.Unlock()
-		return "", errPaused
+	if this.blocked {
+		defer this.Unlock()
+		return "", ErrPaused
 	}
 	this.running = command
 	this.Unlock()
 	if this.running == nil {
 		return "", nil
 	}
-	output, err := this.running.run(log)
+	output, err := this.running.Run(log)
 	if err != nil {
 		return "", err
 	}
@@ -75,13 +87,13 @@ func (this *kernel) run(log Log, command *command) (string, error) {
 	return string(output), err
 }
 
-func (this *kernel) overrun(log Log, command *command) {
+func (this *kernel) SudoRun(log log.Log, command command.Command) {
 	this.Lock()
 	defer this.Unlock()
 	if command == nil {
 		return
 	}
 	this.running = command
-	this.running.run(log)
+	this.running.Run(log)
 	this.running = nil
 }

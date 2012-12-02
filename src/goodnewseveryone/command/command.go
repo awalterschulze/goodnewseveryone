@@ -44,7 +44,6 @@ func read(log log.Log, w io.Writer, r *bufio.Reader) {
 
 type Command interface {
 	Run(log log.Log) ([]byte, error)
-	Start(log log.Log, output io.Writer) error
 	Stop(log log.Log)
 }
 
@@ -92,7 +91,7 @@ func (this *command) Stop(log log.Log) {
 	return
 }
 
-func (this *command) Start(log log.Log, output io.Writer) error {
+func (this *command) start(log log.Log, output io.Writer) error {
 	this.Lock()
 	defer this.Unlock()
 	if this.censoredArgs {
@@ -121,7 +120,7 @@ func (this *command) Start(log log.Log, output io.Writer) error {
 
 func (this *command) Run(log log.Log) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
-	err := this.Start(log, buf)
+	err := this.start(log, buf)
 	if err != nil {
 		log.Error(err)
 		return nil, err
