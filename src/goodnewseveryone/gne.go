@@ -19,10 +19,13 @@ import (
 	"time"
 	"sync"
 	"errors"
-)
-
-var (
-	errLocationExists = errors.New("There is a Task that is still using this location")
+	gstore "goodnewseveryone/store"
+	"goodnewseveryone/log"
+	"goodnewseveryone/location"
+	"goodnewseveryone/kernel"
+	"goodnewseveryone/task"
+	"goodnewseveryone/diff"
+	"goodnewseveryone/executor"
 )
 
 type GNE interface {
@@ -34,69 +37,54 @@ type GNE interface {
 	GetTasks() Tasks
 	SetWaitTime(waitTime time.Duration)
 	GetWaitTime() time.Duration
-	Now()
-	Restart()
-	Stop()
-	IsReady() bool
-	IsRunning() bool
+	Now(taskId TaskId)
+	Unblock()
+	Block()
+	Blocked() bool
+	BusyWith() TaskId
 	GetLogs() (LogFiles, error)
-	GetFileLists() (FileLists, error)
 	GetDiffs() (DiffsPerLocation, error)
 	Start()
 }
 
 type gne struct {
 	sync.Mutex
-	kernel *kernel
-	locations Locations
-	tasks Tasks
-	executor *executor
+	locations location.Locations
+	tasks task.Tasks
+	executor executor.Executor
 	waitTime time.Duration
 	nowChan chan time.Time
 	stopChan chan time.Time
 	restartChan chan time.Time
 }
 
-func ConfigToGNE(configLocation string) GNE {
-	startupLog, err := newLog()
+func NewGNE(store gstore.Store) GNE {
+	startupLog, err := log.NewLog(time.Now(), store)
 	if err != nil {
 		panic(err)
 	}
+	locations, err := location.NewLocations(startupLog, store)
+	if err != nil {
+		panic(err)
+	}
+	waitTime, err := store.GetWaitTime()
+	if err != nil {
+		panic(err)
+	}
+	tasks, err := task.NewTasks(store)
+	if err != nil {
+		panic(err)
+	}
+
 	gne := &gne{
-		kernel: newKernel(),
-		executor: newExecutor(),
-		waitTime: 5*time.Minute,
+		locations: locations,
+		tasks: tasks,
+		executor: executor.newExecutor(kernel.NewKernel()),
+		waitTime: waitTime,
 		nowChan: make(chan time.Time),
 		stopChan: make(chan time.Time),
 		restartChan: make(chan time.Time),
-		tasks: make(Tasks),
-		locations : make(Locations),
 	}
-	locations, err := configToLocations(startupLog, configLocation)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Locations = %v\n", locations)
-	tasks, err := configToTasks(startupLog, configLocation)
-	if err != nil {
-		panic(err)
-	}
-	for _, l := range locations {
-		err := gne.AddLocation(l)	
-		if err != nil {
-			startupLog.Error(err)
-			panic(err)
-		}
-	}
-	for _, t := range tasks {
-		err := gne.AddTask(t)
-		if err != nil {
-			startupLog.Error(err)
-			panic(err)
-		}
-	}
-	fmt.Printf("Tasks = %v\n", gne.GetTasks())
-	return gne
 }
 
 func (this *gne) AddLocation(loc Location) error {
