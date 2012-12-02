@@ -72,25 +72,33 @@ func RemoveTaskType(store gstore.TaskStore, name string) error {
 	return store.RemoveTaskType(name)
 }
 
-type Tasks struct {
+type Tasks interface {
+	List() []TaskId
+	Get(TaskId) Task
+	Add(task Task) error
+	Remove(taskId TaskId) error
+	Complete(taskId TaskId, now time.Time) error
+}
+
+type tasks struct {
 	store gstore.TaskStore
 	tasks map[TaskId]Task
 }
 
-func NewTasks(store gstore.TaskStore) (Tasks, error) {
+func NewTasks(store gstore.TaskStore) (*tasks, error) {
 	taskTypes, err := ListTaskTypes(store)
 	if err != nil {
-		return Tasks{}, err
+		return nil, err
 	}
-	tasks := make(map[TaskId]Task)
+	ts := make(map[TaskId]Task)
 	taskIds, err := store.ListTasks()	
 	if err != nil {
-		return Tasks{}, err
+		return nil, err
 	}
 	for _, taskId := range taskIds {
 		src, taskTypName, dst, err := store.ReadTask(taskId)
 		if err != nil {
-			return Tasks{}, err
+			return nil, err
 		}
 		var taskType TaskType = nil
 		for _, taskTyp := range taskTypes {
@@ -99,7 +107,7 @@ func NewTasks(store gstore.TaskStore) (Tasks, error) {
 			}
 		}
 		if taskType.Name() != taskTypName {
-			return Tasks{}, gstore.ErrTaskTypeDoesNotExist
+			return nil, gstore.ErrTaskTypeDoesNotExist
 		}
 		task := &task{
 			name: TaskId(taskId),
@@ -109,22 +117,34 @@ func NewTasks(store gstore.TaskStore) (Tasks, error) {
 		}
 		times, err := store.ListTaskCompleted(taskId)
 		if err != nil {
-			return Tasks{}, err
+			return nil, err
 		}
 		for i, t := range times {
 			if t.After(task.lastCompleted) {
 				task.lastCompleted = times[i]
 			}
 		}
-		tasks[TaskId(taskId)] = task
+		ts[TaskId(taskId)] = task
 	}
-	return Tasks{
+	return &tasks{
 		store: store,
-		tasks: tasks,
+		tasks: ts,
 	}, nil
 }
 
-func (tasks Tasks) Add(task Task) error {
+func (tasks *tasks) Get(taskId TaskId) Task {
+	return tasks.tasks[taskId]
+}
+
+func (tasks *tasks) List() []TaskId {
+	list := make([]TaskId, 0, len(tasks.tasks))
+	for id, _ := range tasks.tasks {
+		list = append(list, id)
+	}
+	return list
+}
+
+func (tasks *tasks) Add(task Task) error {
 	if _, ok := tasks.tasks[task.Id()]; ok {
 		return gstore.ErrTaskAlreadyExists
 	}
@@ -135,7 +155,7 @@ func (tasks Tasks) Add(task Task) error {
 	return nil
 }
 
-func (tasks Tasks) Remove(taskId TaskId) error {
+func (tasks *tasks) Remove(taskId TaskId) error {
 	if _, ok := tasks.tasks[taskId]; !ok {
 		return gstore.ErrTaskDoesNotExist
 	}
@@ -155,7 +175,7 @@ func (tasks Tasks) Remove(taskId TaskId) error {
 	return nil
 }
 
-func (tasks Tasks) Complete(taskId TaskId, now time.Time) error {
+func (tasks *tasks) Complete(taskId TaskId, now time.Time) error {
 	if _, ok := tasks.tasks[taskId]; !ok {
 		return gstore.ErrTaskDoesNotExist
 	}

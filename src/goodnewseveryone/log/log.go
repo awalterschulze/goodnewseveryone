@@ -75,23 +75,23 @@ func (this *log) Close() {
 	this.store.CloseLogSession(this.sessionKey)
 }
 
-type LogContens []*LogContent
+type LogContents []*LogContent
 
-func (this LogContens) Len() int {
+func (this LogContents) Len() int {
 	return len(this)
 }
 
-func (this LogContens) Swap(i, j int) {
+func (this LogContents) Swap(i, j int) {
 	this[i], this[j] = this[j], this[i]
 }
 
-func (this LogContens) Less(i, j int) bool {
+func (this LogContents) Less(i, j int) bool {
 	return this[i].At.After(this[j].At)
 }
 
-func NewLogContents(store store.LogStore) (LogContens, error) {
+func NewLogContents(store store.LogStore) (LogContents, error) {
 	times := store.ListLogSessions()
-	res := make(LogContens, len(times))
+	res := make(LogContents, len(times))
   	for i, t := range times {
   		res[i] = newLogContent(store, t)
   	}

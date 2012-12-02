@@ -31,7 +31,7 @@ type Executor interface {
 	StopAndBlock(log log.Log)
 	Unblock()
 	BusyWith() task.TaskId
-	Execute(log log.Log, task task.Task, locations location.Locations)
+	Execute(log log.Log, task task.Task, locations location.Locations, store gstore.FilelistStore)
 }
 
 type executor struct {

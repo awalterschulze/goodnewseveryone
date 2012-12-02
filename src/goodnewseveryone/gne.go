@@ -15,10 +15,8 @@
 package goodnewseveryone
 
 import (
-	"fmt"
 	"time"
 	"sync"
-	"errors"
 	gstore "goodnewseveryone/store"
 	"goodnewseveryone/log"
 	"goodnewseveryone/location"
@@ -26,36 +24,43 @@ import (
 	"goodnewseveryone/task"
 	"goodnewseveryone/diff"
 	"goodnewseveryone/executor"
+	"fmt"
 )
 
 type GNE interface {
-	AddLocation(loc Location) error
-	RemoveLocation(locId LocationId) error
-	GetLocations() Locations
-	AddTask(task Task) error
-	RemoveTask(taskId TaskId) error
-	GetTasks() Tasks
+	AddLocation(loc location.Location) error
+	RemoveLocation(locId location.LocationId) error
+	GetLocations() location.Locations
+
+	AddTask(task task.Task) error
+	RemoveTask(taskId task.TaskId) error
+	GetTasks() task.Tasks
+
 	SetWaitTime(waitTime time.Duration)
 	GetWaitTime() time.Duration
-	Now(taskId TaskId)
+
+	Now(taskId task.TaskId)
 	Unblock()
-	Block()
+	StopAndBlock()
 	Blocked() bool
-	BusyWith() TaskId
-	GetLogs() (LogFiles, error)
-	GetDiffs() (DiffsPerLocation, error)
+	BusyWith() task.TaskId
+	
+	GetLogs() (log.LogContents, error)
+
+	GetDiffs() (diff.DiffsPerLocation, error)
+
 	Start()
 }
 
 type gne struct {
 	sync.Mutex
+	store gstore.Store
 	locations location.Locations
 	tasks task.Tasks
 	executor executor.Executor
 	waitTime time.Duration
-	nowChan chan time.Time
-	stopChan chan time.Time
-	restartChan chan time.Time
+	waitChan <- chan time.Time
+	nowChan chan task.TaskId
 }
 
 func NewGNE(store gstore.Store) GNE {
@@ -77,111 +82,112 @@ func NewGNE(store gstore.Store) GNE {
 	}
 
 	gne := &gne{
+		store: store,
 		locations: locations,
 		tasks: tasks,
-		executor: executor.newExecutor(kernel.NewKernel()),
+		executor: executor.NewExecutor(kernel.NewKernel()),
 		waitTime: waitTime,
-		nowChan: make(chan time.Time),
-		stopChan: make(chan time.Time),
-		restartChan: make(chan time.Time),
+		waitChan: time.After(waitTime),
+		nowChan: make(chan task.TaskId),
 	}
+	return gne
 }
 
-func (this *gne) AddLocation(loc Location) error {
-	return this.locations.Add(loc)
+func (this *gne) AddLocation(loc location.Location) error {
+	return this.locations.Add(this.store, loc)
 }
 
-func (this *gne) RemoveLocation(locId LocationId) error {
-	for _, t := range this.tasks {
-		if t.Src == locId || t.Dst == locId {
-			return errLocationExists
-		}
-	}
-	return this.locations.Remove(locId)
+func (this *gne) RemoveLocation(locId location.LocationId) error {
+	return this.locations.Remove(this.store, locId)
 }
 
-func (this *gne) GetLocations() Locations {
+func (this *gne) GetLocations() location.Locations {
 	return this.locations
 }
 
-func (this *gne) AddTask(task Task) error {
-	if _, ok := this.locations[task.Src]; !ok {
-		return errUnknownLocation
+func (this *gne) AddTask(task task.Task) error {
+	if _, ok := this.locations[task.Src()]; !ok {
+		return gstore.ErrLocationDoesNotExist
 	}
-	if _, ok := this.locations[task.Dst]; !ok {
-		return errUnknownLocation
+	if _, ok := this.locations[task.Dst()]; !ok {
+		return gstore.ErrLocationDoesNotExist
 	}
 	return this.tasks.Add(task)
 }
 
-func (this *gne) RemoveTask(taskId TaskId) error {
+func (this *gne) RemoveTask(taskId task.TaskId) error {
 	return this.tasks.Remove(taskId)
 }
 
-func (this *gne) GetTasks() Tasks {
+func (this *gne) GetTasks() task.Tasks {
 	return this.tasks
 }
 
 func (this *gne) SetWaitTime(waitTime time.Duration) {
 	this.waitTime = waitTime
+	this.waitChan = time.After(this.waitTime)
 }
 
 func (this *gne) GetWaitTime() time.Duration {
 	return this.waitTime
 }
 
-func (this *gne) Now() {
-	this.nowChan <- time.Now()
+func (this *gne) Now(taskId task.TaskId) {
+	this.nowChan <- taskId
 }
 
-func (this *gne) Restart() {
-	this.restartChan <- time.Now()
+func (this *gne) Unblock() {
+	this.executor.Unblock()
+}
+	
+func (this *gne) StopAndBlock()  {
+	l, _ := log.NewLog(time.Now(), this.store)
+	this.executor.StopAndBlock(l)
+}
+	
+func (this *gne) Blocked() bool {
+	return this.executor.Blocked()
+}
+	
+func (this *gne) BusyWith() task.TaskId {
+	return this.executor.BusyWith()
 }
 
-func (this *gne) Stop() {
-	this.stopChan <- time.Now()
+func (this *gne) GetLogs() (log.LogContents, error) {
+	return log.NewLogContents(this.store)
 }
 
-func (this *gne) IsReady() bool {
-	return this.kernel.ready()
+func (this *gne) GetDiffs() (diff.DiffsPerLocation, error) {
+	return diff.NewDiffsPerLocation(this.store)
 }
 
-func (this *gne) IsRunning() bool {
-	return this.executor.IsRunning()
+func (this *gne) runAll() {
+	tasks := this.tasks.List()
+	for _, taskId := range tasks {
+		this.run(taskId)
+	}
 }
 
-func (this *gne) GetLogs() (LogFiles, error) {
-	return NewLogFiles(".")
-}
-
-func (this *gne) GetFileLists() (FileLists, error) {
-	return NewFileLists(".")
-}
-
-func (this *gne) GetDiffs() (DiffsPerLocation, error) {
-	return NewDiffsPerLocation(".")
+func (this *gne) run(taskId task.TaskId) {
+	l, err := log.NewLog(time.Now(), this.store)
+	if err != nil {
+		panic(err)
+	}
+	task := this.tasks.Get(taskId)
+	if task == nil {
+		l.Write(fmt.Sprintf("Task %v Does not Exist", task))
+		return
+	}
+	this.executor.Execute(l, task, this.locations, this.store)
 }
 
 func (this *gne) Start() {
-	waitChan := time.After(1)
-	//TODO executor.All should run in a go routine
 	for {
 		select {
-		case <- waitChan:
-			if this.kernel.ready() {
-				this.executor.All(this.kernel, this.locations, this.tasks)
-			}
-		case <- this.nowChan:
-			this.executor.All(this.kernel, this.locations, this.tasks)
-		case <- this.stopChan:
-			stopLog, err := newLog()
-			if err != nil {
-				panic(err)
-			}
-			this.kernel.stop(stopLog)
-		case <- this.restartChan:
-			this.kernel.restart()
+		case <- this.waitChan:
+			this.runAll()
+		case t := <-this.nowChan:
+			this.run(t)
 		}
-		waitChan = time.After(this.waitTime)
 	}
 }

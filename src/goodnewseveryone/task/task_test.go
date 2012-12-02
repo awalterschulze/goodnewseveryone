@@ -17,9 +17,9 @@ func TestTaskTypes(t *testing.T) {
 	if len(types) != 0 {
 		t.Fatalf("expected no task types, but read %v", types)
 	}
-	taskType := TaskType{
-		Name: "move",
-		CmdStr: "rsync -r --remove-source-files %v %v",
+	taskType := &taskType{
+		name: "move",
+		cmdStr: "rsync -r --remove-source-files %v %v",
 	}
 	if err := AddTaskType(f, taskType); err != nil {
 		panic(err)
@@ -34,7 +34,7 @@ func TestTaskTypes(t *testing.T) {
 	if !reflect.DeepEqual(types[0], taskType) {
 		t.Fatalf("%v != %v", types[0], taskType)
 	}
-	if err := RemoveTaskType(f, taskType.Name); err != nil {
+	if err := RemoveTaskType(f, taskType.name); err != nil {
 		panic(err)
 	}
 	types, err = ListTaskTypes(f)
@@ -55,9 +55,9 @@ func TestTasks(t *testing.T) {
 	if len(tasks.tasks) != 0 {
 		t.Fatalf("expected no tasks, but read %v", tasks.tasks)
 	}
-	taskType := TaskType{
-		Name: "move",
-		CmdStr: "rsync -r --remove-source-files %v %v",
+	taskType := &taskType{
+		name: "move",
+		cmdStr: "rsync -r --remove-source-files %v %v",
 	}
 	if err := AddTaskType(f, taskType); err != nil {
 		panic(err)
@@ -93,16 +93,16 @@ func TestTasks(t *testing.T) {
 	if len(tasks.tasks) != 0 {
 		t.Fatalf("expected no tasks, but read %v", tasks.tasks)
 	}
-	if err := RemoveTaskType(f, taskType.Name); err != nil {
+	if err := RemoveTaskType(f, taskType.name); err != nil {
 		panic(err)
 	}
 }
 
 func TestCompleted(t *testing.T) {
 	f := files.NewFiles(".")
-	taskType := TaskType{
-		Name: "move",
-		CmdStr: "rsync -r --remove-source-files %v %v",
+	taskType := &taskType{
+		name: "move",
+		cmdStr: "rsync -r --remove-source-files %v %v",
 	}
 	if err := AddTaskType(f, taskType); err != nil {
 		panic(err)
@@ -140,7 +140,7 @@ func TestCompleted(t *testing.T) {
 	if err := tasks.Remove(task.Id()); err != nil {
 		panic(err)
 	}
-	if err := RemoveTaskType(f, taskType.Name); err != nil {
+	if err := RemoveTaskType(f, taskType.name); err != nil {
 		panic(err)
 	}
 }
