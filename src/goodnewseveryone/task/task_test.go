@@ -62,10 +62,10 @@ func TestTasks(t *testing.T) {
 	if err := AddTaskType(f, taskType); err != nil {
 		panic(err)
 	}
-	task := Task{
-		Typ: taskType,
-		Src: location.LocationId("Home"),
-		Dst: location.LocationId("SharedFolder"),
+	task := &task{
+		typ: taskType,
+		src: location.LocationId("Home"),
+		dst: location.LocationId("SharedFolder"),
 	}
 	if err := tasks.Add(task); err != nil {
 		panic(err)
@@ -111,17 +111,17 @@ func TestCompleted(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	task := Task{
-		Name: TaskId("moveshared"),
-		Typ: taskType,
-		Src: location.LocationId("Home"),
-		Dst: location.LocationId("SharedFolder"),
+	task := &task{
+		name: TaskId("moveshared"),
+		typ: taskType,
+		src: location.LocationId("Home"),
+		dst: location.LocationId("SharedFolder"),
 	}
 	if err := tasks.Add(task); err != nil {
 		panic(err)
 	}
-	if !tasks.tasks[task.Id()].LastCompleted.Equal(time.Time{}) {
-		t.Fatalf("%v != %v", time.Time{}, tasks.tasks[task.Id()].LastCompleted)
+	if !tasks.tasks[task.Id()].LastCompleted().Equal(time.Time{}) {
+		t.Fatalf("%v != %v", time.Time{}, tasks.tasks[task.Id()].LastCompleted())
 	}
 	now1 := time.Now()
 	if err := tasks.Complete(task.Id(), now1); err != nil {
@@ -134,8 +134,8 @@ func TestCompleted(t *testing.T) {
 	if err := tasks.Complete(task.Id(), now1); err != nil {
 		panic(err)
 	}
-	if !tasks.tasks[task.Id()].LastCompleted.Equal(now2) {
-		t.Fatalf("%v != %v", now2, tasks.tasks[task.Id()].LastCompleted)
+	if !tasks.tasks[task.Id()].LastCompleted().Equal(now2) {
+		t.Fatalf("%v != %v", now2, tasks.tasks[task.Id()].LastCompleted())
 	}
 	if err := tasks.Remove(task.Id()); err != nil {
 		panic(err)

@@ -23,13 +23,27 @@ import (
 
 type TaskId string
 
-type TaskType struct {
-	Name string
-	CmdStr string
+type TaskType interface {
+	NewCommand(src, dst string) command.Command
+	Name() string
+	CmdStr() string
 }
 
-func (this TaskType) NewCommand(src, dst string) command.Command {
-	return command.NewCommand(this.CmdStr, src, dst)
+type taskType struct {
+	name string
+	cmdStr string
+}
+
+func (this *taskType) NewCommand(src, dst string) command.Command {
+	return command.NewCommand(this.cmdStr, src, dst)
+}
+
+func (this *taskType) Name() string {
+	return this.name
+}
+
+func (this *taskType) CmdStr() string {
+	return this.cmdStr
 }
 
 func ListTaskTypes(store gstore.TaskStore) (types []TaskType, err error) {
@@ -42,16 +56,16 @@ func ListTaskTypes(store gstore.TaskStore) (types []TaskType, err error) {
 		if err != nil {
 			return nil, err
 		}
-		types = append(types, TaskType{
-			Name: name,
-			CmdStr: cmdStr,
+		types = append(types, &taskType{
+			name: name,
+			cmdStr: cmdStr,
 		})
 	}
 	return types, nil
 }
 
 func AddTaskType(store gstore.TaskStore, taskType TaskType) error {
-	return store.AddTaskType(taskType.Name, taskType.CmdStr)
+	return store.AddTaskType(taskType.Name(), taskType.CmdStr())
 }
 
 func RemoveTaskType(store gstore.TaskStore, name string) error {
@@ -78,28 +92,28 @@ func NewTasks(store gstore.TaskStore) (Tasks, error) {
 		if err != nil {
 			return Tasks{}, err
 		}
-		taskType := TaskType{}
+		var taskType TaskType = nil
 		for _, taskTyp := range taskTypes {
-			if taskTypName == taskTyp.Name {
+			if taskTypName == taskTyp.Name() {
 				taskType = taskTyp
 			}
 		}
-		if taskType.Name != taskTypName {
+		if taskType.Name() != taskTypName {
 			return Tasks{}, gstore.ErrTaskTypeDoesNotExist
 		}
-		task := Task{
-			Name: TaskId(taskId),
-			Src: location.LocationId(src),
-			Typ: taskType,
-			Dst: location.LocationId(dst),
+		task := &task{
+			name: TaskId(taskId),
+			src: location.LocationId(src),
+			typ: taskType,
+			dst: location.LocationId(dst),
 		}
 		times, err := store.ListTaskCompleted(taskId)
 		if err != nil {
 			return Tasks{}, err
 		}
 		for i, t := range times {
-			if t.After(task.LastCompleted) {
-				task.LastCompleted = times[i]
+			if t.After(task.lastCompleted) {
+				task.lastCompleted = times[i]
 			}
 		}
 		tasks[TaskId(taskId)] = task
@@ -114,7 +128,7 @@ func (tasks Tasks) Add(task Task) error {
 	if _, ok := tasks.tasks[task.Id()]; ok {
 		return gstore.ErrTaskAlreadyExists
 	}
-	if err := tasks.store.AddTask(string(task.Id()), string(task.Src), task.Typ.Name, string(task.Dst)); err != nil {
+	if err := tasks.store.AddTask(string(task.Id()), string(task.Src()), task.TaskTypeName(), string(task.Dst())); err != nil {
 		return err
 	}
 	tasks.tasks[task.Id()] = task
@@ -149,34 +163,74 @@ func (tasks Tasks) Complete(taskId TaskId, now time.Time) error {
 		return err
 	}
 	t := tasks.tasks[taskId]
-	if now.After(t.LastCompleted) {
-		t.LastCompleted = now
+	if now.After(t.LastCompleted()) {
+		t.Complete(now)
 	}
 	tasks.tasks[taskId] = t
 	return nil
 }
 
-type Task struct {
-	Name TaskId
-	Typ TaskType
-	Src location.LocationId
-	Dst location.LocationId
-	LastCompleted time.Time
+type Task interface {
+	Id() TaskId
+	NewCommand(locations location.Locations) (command.Command, error)
+	TaskTypeName() string
+	Src() location.LocationId
+	Dst() location.LocationId
+	LastCompleted() time.Time
+	Complete(time.Time)
 }
 
-func (this Task) Id() TaskId {
-	return this.Name
+type task struct {
+	name TaskId
+	typ TaskType
+	src location.LocationId
+	dst location.LocationId
+	lastCompleted time.Time
 }
 
-func (this Task) NewCommand(locations location.Locations) (command.Command, error) {
-	src, ok := locations[this.Src]
+func NewTask(name TaskId, typ TaskType, src, dst location.LocationId) Task {
+	return &task{
+		name: name,
+		typ: typ,
+		src: src,
+		dst: dst,
+	}
+}
+
+func (this *task) Id() TaskId {
+	return TaskId(this.name)
+}
+
+func (this *task) NewCommand(locations location.Locations) (command.Command, error) {
+	src, ok := locations[this.src]
 	if !ok {
 		return nil, gstore.ErrLocationDoesNotExist
 	}
-	dst, ok := locations[this.Dst]
+	dst, ok := locations[this.dst]
 	if !ok {
 		return nil, gstore.ErrLocationDoesNotExist
 	}
-	return this.Typ.NewCommand(src.GetLocal(), dst.GetLocal()), nil
+	return this.typ.NewCommand(src.GetLocal(), dst.GetLocal()), nil
 }
+
+func (this *task) TaskTypeName() string {
+	return this.typ.Name()
+}
+
+func (this *task) Src() location.LocationId {
+	return this.src
+}
+
+func (this *task) Dst() location.LocationId {
+	return this.dst
+}
+
+func (this *task) LastCompleted() time.Time {
+	return this.lastCompleted
+}
+	
+func (this *task) Complete(now time.Time) {
+	this.lastCompleted = now
+}
+
 

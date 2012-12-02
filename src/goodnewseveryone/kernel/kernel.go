@@ -22,11 +22,11 @@ import (
 )
 
 var (
-	ErrPaused = errors.New("Kernel is Paused")
+	ErrBlocked = errors.New("Kernel is Blocked")
 )
 
 type Kernel interface {
-	Blocked() bool
+	Blocked() error
 	StopAndBlock(log log.Log)
 	Unblock()
 	Run(log log.Log, command command.Command) (string, error)
@@ -44,10 +44,13 @@ func NewKernel() Kernel {
 	return &kernel{}
 }
 
-func (this *kernel) Blocked() bool {
+func (this *kernel) Blocked() error {
 	this.Lock()
 	defer this.Unlock()
-	return this.blocked
+	if this.blocked {
+		return ErrBlocked
+	}
+	return nil
 }
 
 func (this *kernel) Unblock() {
@@ -70,13 +73,14 @@ func (this *kernel) Run(log log.Log, command command.Command) (string, error) {
 	this.Lock()
 	if this.blocked {
 		defer this.Unlock()
-		return "", ErrPaused
+		return "", ErrBlocked
 	}
 	this.running = command
-	this.Unlock()
 	if this.running == nil {
+		defer this.Unlock()
 		return "", nil
 	}
+	this.Unlock()
 	output, err := this.running.Run(log)
 	if err != nil {
 		return "", err
