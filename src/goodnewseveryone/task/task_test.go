@@ -3,7 +3,6 @@ package task
 import (
 	"testing"
 	"goodnewseveryone/files"
-	"goodnewseveryone/location"
 	"reflect"
 	"time"
 )
@@ -64,8 +63,8 @@ func TestTasks(t *testing.T) {
 	}
 	task := &task{
 		typ: taskType,
-		src: location.LocationId("Home"),
-		dst: location.LocationId("SharedFolder"),
+		src: "Home",
+		dst: "SharedFolder",
 	}
 	if err := tasks.Add(task); err != nil {
 		panic(err)
@@ -80,7 +79,7 @@ func TestTasks(t *testing.T) {
 	if len(tasks.tasks) != 1 {
 		t.Fatalf("expected 1 task, but read %v", tasks.tasks)
 	}
-	if err := tasks.Remove(task.Id()); err != nil {
+	if err := tasks.Remove(task.Name()); err != nil {
 		panic(err)
 	}
 	if len(tasks.tasks) != 0 {
@@ -112,32 +111,32 @@ func TestCompleted(t *testing.T) {
 		panic(err)
 	}
 	task := &task{
-		name: TaskId("moveshared"),
+		name: "moveshared",
 		typ: taskType,
-		src: location.LocationId("Home"),
-		dst: location.LocationId("SharedFolder"),
+		src: "Home",
+		dst: "SharedFolder",
 	}
 	if err := tasks.Add(task); err != nil {
 		panic(err)
 	}
-	if !tasks.tasks[task.Id()].LastCompleted().Equal(time.Time{}) {
-		t.Fatalf("%v != %v", time.Time{}, tasks.tasks[task.Id()].LastCompleted())
+	if !tasks.tasks[task.Name()].LastCompleted().Equal(time.Time{}) {
+		t.Fatalf("%v != %v", time.Time{}, tasks.tasks[task.Name()].LastCompleted())
 	}
 	now1 := time.Now()
-	if err := tasks.Complete(task.Id(), now1); err != nil {
+	if err := tasks.Complete(task.Name(), now1); err != nil {
 		panic(err)
 	}
 	now2 := time.Now()
-	if err := tasks.Complete(task.Id(), now2); err != nil {
+	if err := tasks.Complete(task.Name(), now2); err != nil {
 		panic(err)
 	}
-	if err := tasks.Complete(task.Id(), now1); err != nil {
+	if err := tasks.Complete(task.Name(), now1); err != nil {
 		panic(err)
 	}
-	if !tasks.tasks[task.Id()].LastCompleted().Equal(now2) {
-		t.Fatalf("%v != %v", now2, tasks.tasks[task.Id()].LastCompleted())
+	if !tasks.tasks[task.Name()].LastCompleted().Equal(now2) {
+		t.Fatalf("%v != %v", now2, tasks.tasks[task.Name()].LastCompleted())
 	}
-	if err := tasks.Remove(task.Id()); err != nil {
+	if err := tasks.Remove(task.Name()); err != nil {
 		panic(err)
 	}
 	if err := RemoveTaskType(f, taskType.name); err != nil {

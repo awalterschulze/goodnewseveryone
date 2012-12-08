@@ -54,14 +54,14 @@ type TaskStore interface {
 	AddTaskType(name string, cmdStr string) error
 	RemoveTaskType(name string) error
 
-	ListTasks() (taskIds []string, err error)
-	ReadTask(taskId string) (src, taskType, dst string, err error)
-	AddTask(taskId string, src, taskType, dst string) error
-	RemoveTask(taskId string) error
+	ListTasks() (taskNames []string, err error)
+	ReadTask(taskName string) (src, taskType, dst string, err error)
+	AddTask(taskName string, src, taskType, dst string) error
+	RemoveTask(taskName string) error
 
-	ListTaskCompleted(taskId string) ([]time.Time, error)
-	AddTaskCompleted(taskId string, now time.Time) error
-	RemoveTaskCompleted(taskId string, then time.Time) error
+	ListTaskCompleted(taskName string) ([]time.Time, error)
+	AddTaskCompleted(taskName string, now time.Time) error
+	RemoveTaskCompleted(taskName string, then time.Time) error
 }
 
 var (

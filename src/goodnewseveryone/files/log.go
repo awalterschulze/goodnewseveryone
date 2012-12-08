@@ -49,15 +49,11 @@ func logFilenameToKey(filename string) string {
 }
 
 func keyToStr(key time.Time) string {
-	return key.Format(defaultTimeFormat)
+	return timeToString(key)
 }
 
 func strToKey(keyStr string) (time.Time, error) {
-	t, err := time.Parse(defaultTimeFormat, keyStr)
-	if err != nil {
-		fmt.Printf("time.Parse error = %v\n", err)
-	}
-	return t, err
+	return stringToTime(keyStr)
 }
 
 func (this *files) NewLogSession(key time.Time) error {

@@ -82,11 +82,11 @@ func (this *files) RemoveTaskType(name string) error {
 	return os.Remove(taskTypeNameToFilename(name))
 }
 
-func taskIdToFilename(taskId string) (filename string) {
-	return fmt.Sprintf("%v.task.json", taskId)
+func taskNameToFilename(taskName string) (filename string) {
+	return fmt.Sprintf("%v.task.json", taskName)
 }
 
-func filenameToTaskId(filename string) (taskId string) {
+func filenameToTaskName(filename string) (taskName string) {
 	return strings.Replace(filename, ".task.json", "", 1)
 }
 
@@ -96,16 +96,16 @@ type task struct {
 	Dst string
 }
 
-func (this *files) ListTasks() (taskIds []string, err error) {
+func (this *files) ListTasks() (taskNames []string, err error) {
 	this.Lock()
 	defer this.Unlock()
-	return this.list("task.json", filenameToTaskId)
+	return this.list("task.json", filenameToTaskName)
 }
 
-func (this *files) ReadTask(taskId string) (src, taskType, dst string, err error) {
+func (this *files) ReadTask(taskName string) (src, taskType, dst string, err error) {
 	this.Lock()
 	defer this.Unlock()
-	data, err := ioutil.ReadFile(taskIdToFilename(taskId))
+	data, err := ioutil.ReadFile(taskNameToFilename(taskName))
 	if err != nil {
 		return "", "", "", err
 	}
@@ -116,7 +116,7 @@ func (this *files) ReadTask(taskId string) (src, taskType, dst string, err error
 	return t.Src, t.Typ, t.Dst, nil
 }
 	
-func (this *files) AddTask(taskId string, src, taskType, dst string) error {
+func (this *files) AddTask(taskName string, src, taskType, dst string) error {
 	this.Lock()
 	defer this.Unlock()
 	t := task{
@@ -128,35 +128,35 @@ func (this *files) AddTask(taskId string, src, taskType, dst string) error {
 	if err != nil {
 		return err
 	}
-	filename := taskIdToFilename(taskId)
+	filename := taskNameToFilename(taskName)
 	if err := ioutil.WriteFile(filename, data, 0666); err != nil {
 		return err
 	}
 	return nil
 }
 	
-func (this *files) RemoveTask(taskId string) error {
+func (this *files) RemoveTask(taskName string) error {
 	this.Lock()
 	defer this.Unlock()
-	return os.Remove(taskIdToFilename(taskId))
+	return os.Remove(taskNameToFilename(taskName))
 }
 
-func taskAndTimeToFilename(taskId string, t time.Time) (filename string) {
-	return fmt.Sprintf("%v---%v.complete", taskId, t.Format(defaultTimeFormat))
+func taskAndTimeToFilename(taskName string, t time.Time) (filename string) {
+	return fmt.Sprintf("%v---%v.complete", taskName, t.Format(defaultTimeFormat))
 }
 
-func filenameToTaskAndTime(filename string) (taskId string, t time.Time, err error) {
+func filenameToTaskAndTime(filename string) (taskName string, t time.Time, err error) {
 	filename = strings.Replace(filename, ".complete", "", 1)
 	ss := strings.Split(filename, "---")
 	if len(ss) != 2 {
 		return "", time.Time{}, ErrUnableToParseFilename
 	}
-	taskId = ss[0]
+	taskName = ss[0]
 	t, err = time.Parse(defaultTimeFormat, ss[1])
-	return taskId, t, err
+	return taskName, t, err
 }
 
-func (this *files) ListTaskCompleted(taskId string) (times []time.Time, err error) {
+func (this *files) ListTaskCompleted(taskName string) (times []time.Time, err error) {
 	this.Lock()
 	defer this.Unlock()
 	err = filepath.Walk(this.root, func(path string, info os.FileInfo, err error) error {
@@ -164,11 +164,11 @@ func (this *files) ListTaskCompleted(taskId string) (times []time.Time, err erro
 			return err
 		}
 		if strings.HasSuffix(path, ".complete") {
-			fileTaskId, t, err := filenameToTaskAndTime(path)
+			fileTaskName, t, err := filenameToTaskAndTime(path)
 			if err != nil {
 				return err
 			}
-			if taskId == fileTaskId {
+			if taskName == fileTaskName {
 				times = append(times, t)
 			}
 		}
@@ -177,10 +177,10 @@ func (this *files) ListTaskCompleted(taskId string) (times []time.Time, err erro
 	return times, err
 }
 	
-func (this *files) AddTaskCompleted(taskId string, now time.Time) error {
+func (this *files) AddTaskCompleted(taskName string, now time.Time) error {
 	this.Lock()
 	defer this.Unlock()
-	filename := taskAndTimeToFilename(taskId, now)
+	filename := taskAndTimeToFilename(taskName, now)
 	f, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -188,9 +188,9 @@ func (this *files) AddTaskCompleted(taskId string, now time.Time) error {
 	return f.Close()
 }
 	
-func (this *files) RemoveTaskCompleted(taskId string, then time.Time) error {
+func (this *files) RemoveTaskCompleted(taskName string, then time.Time) error {
 	this.Lock()
 	defer this.Unlock()
-	filename := taskAndTimeToFilename(taskId, then)
+	filename := taskAndTimeToFilename(taskName, then)
 	return os.Remove(filename)
 }

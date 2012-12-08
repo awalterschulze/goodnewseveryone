@@ -94,9 +94,8 @@ func TestExecutor(t *testing.T) {
 	f := files.NewFiles(".")
 	k := kernel.NewKernel()
 	e := NewExecutor(k)
-	id := task.TaskId("taskname")
-	task := task.NewTask(id, &taskType{"typename"}, 
-		location.LocationId("a"), location.LocationId("b"))
+	id := "taskname"
+	task := task.NewTask(id, &taskType{"typename"}, "a", "b")
 	l := &loggy{}
 	loc1 := location.NewLocalLocation("a", ".")
 	loc2 := location.NewLocalLocation("b", ".")

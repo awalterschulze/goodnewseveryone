@@ -57,11 +57,11 @@ func TestTaskTypes(t *testing.T) {
 
 func TestTasks(t *testing.T) {
 	f := NewFiles(".")
-	taskId := "a"
+	taskName := "a"
 	src := "/home/b"
 	dst := "/home/c/"
 	tt := "move"
-	if err := f.AddTask(taskId, src, tt, dst); err != nil {
+	if err := f.AddTask(taskName, src, tt, dst); err != nil {
 		panic(err)
 	}
 	ids, err := f.ListTasks()
@@ -71,17 +71,17 @@ func TestTasks(t *testing.T) {
 	if len(ids) != 1 {
 		t.Fatalf("wrong number of tasks")
 	}
-	if ids[0] != taskId {
-		t.Fatalf("not the correct id, expected %v, but got %v", taskId, ids[0])
+	if ids[0] != taskName {
+		t.Fatalf("not the correct id, expected %v, but got %v", taskName, ids[0])
 	}
-	src1, tt1, dst1, err := f.ReadTask(taskId)
+	src1, tt1, dst1, err := f.ReadTask(taskName)
 	if err != nil {
 		panic(err)
 	}
 	if src1 != src || dst1 != dst || tt1 != tt {
 		t.Fatalf("wrong task %v %v %v != %v %v %v", src, dst, tt, src1, dst1, tt1)
 	}
-	if err := f.RemoveTask(taskId); err != nil {
+	if err := f.RemoveTask(taskName); err != nil {
 		panic(err)
 	}
 	ids, err = f.ListTasks()

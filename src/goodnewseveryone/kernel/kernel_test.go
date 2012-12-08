@@ -75,11 +75,11 @@ func TestStop(t *testing.T) {
 func TestUnblock(t *testing.T) {
 	k := NewKernel()
 	k.StopAndBlock(nil)
-	if !k.Blocked() {
+	if k.Blocked() == nil {
 		t.Fatalf("Expected Blocked")
 	}
 	k.Unblock()
-	if k.Blocked() {
+	if k.Blocked() != nil {
 		t.Fatalf("Expected Unblocked")
 	}
 }

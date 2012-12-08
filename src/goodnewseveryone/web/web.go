@@ -388,9 +388,9 @@ func (this *web) handleRemoveLocation(w http.ResponseWriter, r *http.Request) {
 
 func (this *web) handleRemoveTask(w http.ResponseWriter, r *http.Request) {
 	this.header.Execute(w, nil)
-	taskId := r.FormValue("task")
+	taskName := r.FormValue("task")
 	tasks := this.gne.GetTasks()
-	task, ok := tasks[gne.TaskId(taskId)]
+	task, ok := tasks[taskName]
 	if !ok {
 		this.redirectMan.Execute(w, slow)
 		this.error.Execute(w, "task does not exist")

@@ -39,7 +39,7 @@ func filelistNameToLocationandTime(name string) (location string, t time.Time, e
 	if len(ss) != 2 {
 		return "", t, errors.New("filelist filename parse error")
 	}
-	t, err = time.Parse(defaultTimeFormat, ss[1])
+	t, err = stringToTime(ss[1])
 	if err != nil {
 		return "", t, err
 	}
@@ -47,7 +47,7 @@ func filelistNameToLocationandTime(name string) (location string, t time.Time, e
 }
 
 func locationAndTimeToFilelistName(location string, t time.Time) string {
-	return fmt.Sprintf("%v---%v", location, t.Format(defaultTimeFormat))
+	return fmt.Sprintf("%v---%v", location, timeToString(t))
 }
 
 func (this *files) ListFilelists() (locations []string, times []time.Time, err error) {

@@ -30,14 +30,14 @@ type Executor interface {
 	Blocked() bool
 	StopAndBlock(log log.Log)
 	Unblock()
-	BusyWith() task.TaskId
+	BusyWith() (taskName string)
 	Execute(log log.Log, task task.Task, locations location.Locations, store gstore.FilelistStore)
 }
 
 type executor struct {
 	sync.Mutex
 	kernel kernel.Kernel
-	busy task.TaskId
+	busy string
 }
 
 func NewExecutor(kernel kernel.Kernel) *executor {
@@ -64,14 +64,14 @@ func (this *executor) Unblock() {
 	this.kernel.Unblock()
 }
 
-func (this *executor) BusyWith() task.TaskId {
+func (this *executor) BusyWith() string {
 	return this.busy
 }
 
 func (this *executor) Execute(log log.Log, task task.Task, locations location.Locations, store gstore.FilelistStore) {
 	this.Lock()
 	log.Write(fmt.Sprintf("Executing Task %v", task))
-	this.busy = task.Id()
+	this.busy = task.Name()
 	if err := this.execute(log, task, locations, store); err != nil {
 		log.Error(err)
 	}

@@ -22,9 +22,7 @@ import (
 	"goodnewseveryone/command"
 )
 
-type LocationId string
-
-type Locations map[LocationId]Location
+type Locations map[string]Location
 
 type Store interface {
 	gstore.LocationStore
@@ -93,7 +91,7 @@ func NewLocations(log log.Log, store Store) (Locations, error) {
 	return locations, nil
 }
 
-func (locations Locations) Remove(store Store, locId LocationId) error {
+func (locations Locations) Remove(store Store, locId string) error {
 	if _, ok := locations[locId]; !ok {
 		return gstore.ErrLocationDoesNotExist
 	}
@@ -126,7 +124,7 @@ func (locations Locations) String() string {
 
 type Location interface {
 	String() string
-	Id() LocationId
+	Id() string
 	NewLocatedCommand() command.Command
 	Located(log log.Log, output string) bool
 	NewPreparedCommand() command.Command
@@ -169,8 +167,8 @@ func (this *RemoteLocation) String() string {
 	return "REMOTE=" + this.IPAddress + "_" + string(this.Type) + "//" + this.Remote
 }
 
-func (this *RemoteLocation) Id() LocationId {
-	return LocationId(this.Name)
+func (this *RemoteLocation) Id() string {
+	return this.Name
 }
 
 func (this *RemoteLocation) NewLocatedCommand() command.Command {
@@ -233,8 +231,8 @@ func (this *LocalLocation) String() string {
 	return "LOCAL=" + this.Local
 }
 
-func (this *LocalLocation) Id() LocationId {
-	return LocationId(this.Name)
+func (this *LocalLocation) Id() string {
+	return this.Name
 }
 
 func (this *LocalLocation) NewLocatedCommand() command.Command {

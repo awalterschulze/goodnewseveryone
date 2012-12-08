@@ -15,7 +15,6 @@
 package files
 
 import (
-	"time"
 	"os"
 	"sync"
 	"goodnewseveryone/store"
@@ -25,8 +24,6 @@ import (
 	"io/ioutil"
 	"encoding/json"
 )
-
-const defaultTimeFormat = time.RFC3339
 
 var (
 	ErrUnableToParseFilename = errors.New("unable to parse filename")

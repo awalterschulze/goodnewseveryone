@@ -21,8 +21,6 @@ import (
 	"goodnewseveryone/command"
 )
 
-type TaskId string
-
 type TaskType interface {
 	NewCommand(src, dst string) command.Command
 	Name() string
@@ -73,16 +71,16 @@ func RemoveTaskType(store gstore.TaskStore, name string) error {
 }
 
 type Tasks interface {
-	List() []TaskId
-	Get(TaskId) Task
+	List() []string
+	Get(taskName string) Task
 	Add(task Task) error
-	Remove(taskId TaskId) error
-	Complete(taskId TaskId, now time.Time) error
+	Remove(taskName string) error
+	Complete(taskName string, now time.Time) error
 }
 
 type tasks struct {
 	store gstore.TaskStore
-	tasks map[TaskId]Task
+	tasks map[string]Task
 }
 
 func NewTasks(store gstore.TaskStore) (*tasks, error) {
@@ -90,13 +88,13 @@ func NewTasks(store gstore.TaskStore) (*tasks, error) {
 	if err != nil {
 		return nil, err
 	}
-	ts := make(map[TaskId]Task)
-	taskIds, err := store.ListTasks()	
+	ts := make(map[string]Task)
+	taskNames, err := store.ListTasks()	
 	if err != nil {
 		return nil, err
 	}
-	for _, taskId := range taskIds {
-		src, taskTypName, dst, err := store.ReadTask(taskId)
+	for _, taskName := range taskNames {
+		src, taskTypName, dst, err := store.ReadTask(taskName)
 		if err != nil {
 			return nil, err
 		}
@@ -110,12 +108,12 @@ func NewTasks(store gstore.TaskStore) (*tasks, error) {
 			return nil, gstore.ErrTaskTypeDoesNotExist
 		}
 		task := &task{
-			name: TaskId(taskId),
-			src: location.LocationId(src),
+			name: taskName,
+			src: src,
 			typ: taskType,
-			dst: location.LocationId(dst),
+			dst: dst,
 		}
-		times, err := store.ListTaskCompleted(taskId)
+		times, err := store.ListTaskCompleted(taskName)
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +122,7 @@ func NewTasks(store gstore.TaskStore) (*tasks, error) {
 				task.lastCompleted = times[i]
 			}
 		}
-		ts[TaskId(taskId)] = task
+		ts[taskName] = task
 	}
 	return &tasks{
 		store: store,
@@ -132,12 +130,12 @@ func NewTasks(store gstore.TaskStore) (*tasks, error) {
 	}, nil
 }
 
-func (tasks *tasks) Get(taskId TaskId) Task {
-	return tasks.tasks[taskId]
+func (tasks *tasks) Get(taskName string) Task {
+	return tasks.tasks[taskName]
 }
 
-func (tasks *tasks) List() []TaskId {
-	list := make([]TaskId, 0, len(tasks.tasks))
+func (tasks *tasks) List() []string {
+	list := make([]string, 0, len(tasks.tasks))
 	for id, _ := range tasks.tasks {
 		list = append(list, id)
 	}
@@ -145,70 +143,70 @@ func (tasks *tasks) List() []TaskId {
 }
 
 func (tasks *tasks) Add(task Task) error {
-	if _, ok := tasks.tasks[task.Id()]; ok {
+	if _, ok := tasks.tasks[task.Name()]; ok {
 		return gstore.ErrTaskAlreadyExists
 	}
-	if err := tasks.store.AddTask(string(task.Id()), string(task.Src()), task.TaskTypeName(), string(task.Dst())); err != nil {
+	if err := tasks.store.AddTask(string(task.Name()), string(task.Src()), task.TaskTypeName(), string(task.Dst())); err != nil {
 		return err
 	}
-	tasks.tasks[task.Id()] = task
+	tasks.tasks[task.Name()] = task
 	return nil
 }
 
-func (tasks *tasks) Remove(taskId TaskId) error {
-	if _, ok := tasks.tasks[taskId]; !ok {
+func (tasks *tasks) Remove(taskName string) error {
+	if _, ok := tasks.tasks[taskName]; !ok {
 		return gstore.ErrTaskDoesNotExist
 	}
-	times, err := tasks.store.ListTaskCompleted(string(taskId))
+	times, err := tasks.store.ListTaskCompleted(string(taskName))
 	if err != nil {
 		return err
 	}
 	for _, t := range times {
-		if err := tasks.store.RemoveTaskCompleted(string(taskId), t); err != nil {
+		if err := tasks.store.RemoveTaskCompleted(string(taskName), t); err != nil {
 			return err
 		}
 	}
-	if err := tasks.store.RemoveTask(string(taskId)); err != nil {
+	if err := tasks.store.RemoveTask(string(taskName)); err != nil {
 		return err
 	}
-	delete(tasks.tasks, taskId)
+	delete(tasks.tasks, taskName)
 	return nil
 }
 
-func (tasks *tasks) Complete(taskId TaskId, now time.Time) error {
-	if _, ok := tasks.tasks[taskId]; !ok {
+func (tasks *tasks) Complete(taskName string, now time.Time) error {
+	if _, ok := tasks.tasks[taskName]; !ok {
 		return gstore.ErrTaskDoesNotExist
 	}
-	if err := tasks.store.AddTaskCompleted(string(taskId), now); err != nil {
+	if err := tasks.store.AddTaskCompleted(string(taskName), now); err != nil {
 		return err
 	}
-	t := tasks.tasks[taskId]
+	t := tasks.tasks[taskName]
 	if now.After(t.LastCompleted()) {
 		t.Complete(now)
 	}
-	tasks.tasks[taskId] = t
+	tasks.tasks[taskName] = t
 	return nil
 }
 
 type Task interface {
-	Id() TaskId
+	Name() string
 	NewCommand(locations location.Locations) (command.Command, error)
 	TaskTypeName() string
-	Src() location.LocationId
-	Dst() location.LocationId
+	Src() string
+	Dst() string
 	LastCompleted() time.Time
 	Complete(time.Time)
 }
 
 type task struct {
-	name TaskId
+	name string
 	typ TaskType
-	src location.LocationId
-	dst location.LocationId
+	src string
+	dst string
 	lastCompleted time.Time
 }
 
-func NewTask(name TaskId, typ TaskType, src, dst location.LocationId) Task {
+func NewTask(name string, typ TaskType, src, dst string) Task {
 	return &task{
 		name: name,
 		typ: typ,
@@ -217,8 +215,8 @@ func NewTask(name TaskId, typ TaskType, src, dst location.LocationId) Task {
 	}
 }
 
-func (this *task) Id() TaskId {
-	return TaskId(this.name)
+func (this *task) Name() string {
+	return this.name
 }
 
 func (this *task) NewCommand(locations location.Locations) (command.Command, error) {
@@ -237,11 +235,11 @@ func (this *task) TaskTypeName() string {
 	return this.typ.Name()
 }
 
-func (this *task) Src() location.LocationId {
+func (this *task) Src() string {
 	return this.src
 }
 
-func (this *task) Dst() location.LocationId {
+func (this *task) Dst() string {
 	return this.dst
 }
 

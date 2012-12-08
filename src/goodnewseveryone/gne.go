@@ -29,21 +29,21 @@ import (
 
 type GNE interface {
 	AddLocation(loc location.Location) error
-	RemoveLocation(locId location.LocationId) error
+	RemoveLocation(locName string) error
 	GetLocations() location.Locations
 
 	AddTask(task task.Task) error
-	RemoveTask(taskId task.TaskId) error
+	RemoveTask(taskName string) error
 	GetTasks() task.Tasks
 
 	SetWaitTime(waitTime time.Duration)
 	GetWaitTime() time.Duration
 
-	Now(taskId task.TaskId)
+	Now(taskName string)
 	Unblock()
 	StopAndBlock()
 	Blocked() bool
-	BusyWith() task.TaskId
+	BusyWith() (taskName string)
 	
 	GetLogs() (log.LogContents, error)
 
@@ -60,7 +60,7 @@ type gne struct {
 	executor executor.Executor
 	waitTime time.Duration
 	waitChan <- chan time.Time
-	nowChan chan task.TaskId
+	nowChan chan string
 }
 
 func NewGNE(store gstore.Store) GNE {
@@ -88,7 +88,7 @@ func NewGNE(store gstore.Store) GNE {
 		executor: executor.NewExecutor(kernel.NewKernel()),
 		waitTime: waitTime,
 		waitChan: time.After(waitTime),
-		nowChan: make(chan task.TaskId),
+		nowChan: make(chan string),
 	}
 	return gne
 }
@@ -97,7 +97,7 @@ func (this *gne) AddLocation(loc location.Location) error {
 	return this.locations.Add(this.store, loc)
 }
 
-func (this *gne) RemoveLocation(locId location.LocationId) error {
+func (this *gne) RemoveLocation(locId string) error {
 	return this.locations.Remove(this.store, locId)
 }
 
@@ -115,8 +115,8 @@ func (this *gne) AddTask(task task.Task) error {
 	return this.tasks.Add(task)
 }
 
-func (this *gne) RemoveTask(taskId task.TaskId) error {
-	return this.tasks.Remove(taskId)
+func (this *gne) RemoveTask(taskName string) error {
+	return this.tasks.Remove(taskName)
 }
 
 func (this *gne) GetTasks() task.Tasks {
@@ -132,8 +132,8 @@ func (this *gne) GetWaitTime() time.Duration {
 	return this.waitTime
 }
 
-func (this *gne) Now(taskId task.TaskId) {
-	this.nowChan <- taskId
+func (this *gne) Now(taskName string) {
+	this.nowChan <- taskName
 }
 
 func (this *gne) Unblock() {
@@ -149,7 +149,7 @@ func (this *gne) Blocked() bool {
 	return this.executor.Blocked()
 }
 	
-func (this *gne) BusyWith() task.TaskId {
+func (this *gne) BusyWith() string {
 	return this.executor.BusyWith()
 }
 
@@ -163,17 +163,17 @@ func (this *gne) GetDiffs() (diff.DiffsPerLocation, error) {
 
 func (this *gne) runAll() {
 	tasks := this.tasks.List()
-	for _, taskId := range tasks {
-		this.run(taskId)
+	for _, taskName := range tasks {
+		this.run(taskName)
 	}
 }
 
-func (this *gne) run(taskId task.TaskId) {
+func (this *gne) run(taskName string) {
 	l, err := log.NewLog(time.Now(), this.store)
 	if err != nil {
 		panic(err)
 	}
-	task := this.tasks.Get(taskId)
+	task := this.tasks.Get(taskName)
 	if task == nil {
 		l.Write(fmt.Sprintf("Task %v Does not Exist", task))
 		return
