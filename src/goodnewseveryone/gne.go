@@ -36,7 +36,7 @@ type GNE interface {
 	RemoveTask(taskName string) error
 	GetTasks() task.Tasks
 
-	SetWaitTime(waitTime time.Duration)
+	SetWaitTime(waitTime time.Duration) error
 	GetWaitTime() time.Duration
 
 	Now(taskName string)
@@ -123,9 +123,14 @@ func (this *gne) GetTasks() task.Tasks {
 	return this.tasks
 }
 
-func (this *gne) SetWaitTime(waitTime time.Duration) {
+func (this *gne) SetWaitTime(waitTime time.Duration) error {
+	err := this.store.SetWaitTime(waitTime)
+	if err != nil {
+		return err
+	}
 	this.waitTime = waitTime
 	this.waitChan = time.After(this.waitTime)
+	return nil
 }
 
 func (this *gne) GetWaitTime() time.Duration {
@@ -186,8 +191,10 @@ func (this *gne) Start() {
 		select {
 		case <- this.waitChan:
 			this.runAll()
+			this.waitChan = time.After(this.GetWaitTime())
 		case t := <-this.nowChan:
 			this.run(t)
 		}
+
 	}
 }

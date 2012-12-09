@@ -209,16 +209,203 @@ func TestLogs(t *testing.T) {
 	}
 }
 
-func TestExecution(t *testing.T) {
-	/*SetWaitTime(waitTime time.Duration)
-	GetWaitTime() time.Duration
+func TestWaitTime(t *testing.T) {
+	f := files.NewFiles(".")
+	gne := NewGNE(f)
+	go gne.Start()
+	name := "ataskname"
+	done := make(chan bool)
+	cmd := &mockCommand{done}
+	src := "srcname"
+	dst := "dstname"
+	if err := gne.AddLocation(location.NewLocalLocation(src, ".")); err != nil {
+		panic(err)
+	}
+	if err := gne.AddLocation(location.NewLocalLocation(dst, ".")); err != nil {
+		panic(err)
+	}
+	task := &mockTask{
+		name: name,
+		cmd: cmd,
+		src: src,
+		dst: dst,
+	}
+	if err := gne.AddTask(task); err != nil {
+		panic(err)
+	}
+	sec := time.Second
+	aftertwo := time.After(3*time.Second)
+	if err := gne.SetWaitTime(sec); err != nil {
+		panic(err)
+	}
+	for i := 0; i < 5; i++ {
+		select {
+		case <- aftertwo:
+			t.Fatalf("Task %v started to late", i)
+		case <- done:
 
-	Now(taskName string)
-	Unblock()
-	StopAndBlock()
-	Blocked() bool
-	BusyWith() (taskName string)
-
-	Start()*/
-	panic("todo")
+		}
+		aftertwo = time.After(2*time.Second)
+	}
+	w := gne.GetWaitTime()
+	if w != sec {
+		t.Fatalf("Expected %v, but got %v", sec, w)
+	}
+	if err := gne.RemoveTask(name); err != nil {
+		panic(err)
+	}
+	if err := gne.RemoveLocation(src); err != nil {
+		panic(err)
+	}
+	if err := gne.RemoveLocation(dst); err != nil {
+		panic(err)
+	}
 }
+
+func TestNow(t *testing.T) {
+	f := files.NewFiles(".")
+	gne := NewGNE(f)
+	go gne.Start()
+	name := "ataskname"
+	done := make(chan bool)
+	cmd := &mockCommand{done}
+	src := "srcname"
+	dst := "dstname"
+	if err := gne.AddLocation(location.NewLocalLocation(src, ".")); err != nil {
+		panic(err)
+	}
+	if err := gne.AddLocation(location.NewLocalLocation(dst, ".")); err != nil {
+		panic(err)
+	}
+	task := &mockTask{
+		name: name,
+		cmd: cmd,
+		src: src,
+		dst: dst,
+	}
+	if err := gne.AddTask(task); err != nil {
+		panic(err)
+	}
+	if err := gne.SetWaitTime(time.Hour); err != nil {
+		panic(err)
+	}
+	aftermin := time.After(time.Minute)
+	for i := 0; i < 5; i++ {
+		gne.Now(name)
+		select {
+		case <- aftermin:
+			t.Fatalf("Task %v started to late", i)
+		case <- done:
+
+		}
+	}
+	if err := gne.RemoveTask(name); err != nil {
+		panic(err)
+	}
+	if err := gne.RemoveLocation(src); err != nil {
+		panic(err)
+	}
+	if err := gne.RemoveLocation(dst); err != nil {
+		panic(err)
+	}
+}
+
+func TestBusyWith(t *testing.T) {
+	f := files.NewFiles(".")
+	gne := NewGNE(f)
+	go gne.Start()
+	name := "ataskname"
+	done := make(chan bool)
+	cmd := &mockCommand{done}
+	src := "srcname"
+	dst := "dstname"
+	if err := gne.AddLocation(location.NewLocalLocation(src, ".")); err != nil {
+		panic(err)
+	}
+	if err := gne.AddLocation(location.NewLocalLocation(dst, ".")); err != nil {
+		panic(err)
+	}
+	task := &mockTask{
+		name: name,
+		cmd: cmd,
+		src: src,
+		dst: dst,
+	}
+	if err := gne.AddTask(task); err != nil {
+		panic(err)
+	}
+	gne.Now(name)
+	time.Sleep(time.Second)
+	busy := gne.BusyWith()
+	if busy != name {
+		t.Fatalf("%v", busy)
+	}
+	<- done
+	time.Sleep(time.Second)
+	busy = gne.BusyWith()
+	if len(busy) > 0 {
+		t.Fatalf("%v", busy)
+	}
+	if err := gne.RemoveTask(name); err != nil {
+		panic(err)
+	}
+	if err := gne.RemoveLocation(src); err != nil {
+		panic(err)
+	}
+	if err := gne.RemoveLocation(dst); err != nil {
+		panic(err)
+	}
+}
+
+func TestBlock(t *testing.T) {
+	f := files.NewFiles(".")
+	gne := NewGNE(f)
+	go gne.Start()
+	name := "ataskname"
+	done := make(chan bool)
+	cmd := &mockCommand{done}
+	src := "srcname"
+	dst := "dstname"
+	if err := gne.AddLocation(location.NewLocalLocation(src, ".")); err != nil {
+		panic(err)
+	}
+	if err := gne.AddLocation(location.NewLocalLocation(dst, ".")); err != nil {
+		panic(err)
+	}
+	task := &mockTask{
+		name: name,
+		cmd: cmd,
+		src: src,
+		dst: dst,
+	}
+	if err := gne.AddTask(task); err != nil {
+		panic(err)
+	}
+	gne.StopAndBlock()
+	if !gne.Blocked() {
+		t.Fatalf("Expected Blocked")
+	}
+	gne.Now(name)
+	time.Sleep(time.Second)
+	select {
+		default:
+
+		case <- done:
+			t.Fatalf("Expected Blocked")
+	}
+	time.Sleep(time.Second)
+	gne.Unblock()
+	gne.Now(name)
+	time.Sleep(time.Second)
+	<- done
+	if err := gne.RemoveTask(name); err != nil {
+		panic(err)
+	}
+	if err := gne.RemoveLocation(src); err != nil {
+		panic(err)
+	}
+	if err := gne.RemoveLocation(dst); err != nil {
+		panic(err)
+	}
+}
+
