@@ -29,6 +29,32 @@ type Store interface {
 	gstore.ConfigStore
 }
 
+type RemoteLocationType struct {
+	Name string
+	Mount string
+	Unmount string
+}
+
+func ListRemoteLocationTypes(store Store) ([]RemoteLocationType, error) {
+	remoteTypes, err := store.ListRemoteLocationTypes()
+	if err != nil {
+		return nil, err
+	}
+	remotes := make([]RemoteLocationType, 0, len(remoteTypes))
+	for _, t := range remoteTypes {
+		mount, unmount, err := store.ReadRemoteLocationType(t)
+		if err != nil {
+			return nil, err
+		}
+		remotes = append(remotes, RemoteLocationType{
+			Name: t,
+			Mount: mount,
+			Unmount: unmount,
+		})
+	}
+	return remotes, nil
+}
+
 func NewLocations(log log.Log, store Store) (Locations, error) {
 	locations := make(Locations)
 	locals, err := store.ListLocalLocations()
@@ -52,7 +78,7 @@ func NewLocations(log log.Log, store Store) (Locations, error) {
 	if err != nil {
 		return nil, err
 	}
-	remoteTypes, err := store.ListRemoteLocationTypes()
+	remoteTypes, err := ListRemoteLocationTypes(store)
 	if err != nil {
 		return nil, err
 	}
@@ -67,13 +93,9 @@ func NewLocations(log log.Log, store Store) (Locations, error) {
 			continue
 		}
 		mount, unmount := "", ""
-		for _, rtype := range remoteTypes {
-			if rtype == typ {
-				mount, unmount, err = store.ReadRemoteLocationType(typ)
-				if err != nil {
-					log.Error(err)
-					break
-				}
+		for i, rtype := range remoteTypes {
+			if rtype.Name == typ {
+				mount, unmount = remoteTypes[i].Mount, remoteTypes[i].Unmount
 				break
 			}
 		}

@@ -31,10 +31,13 @@ type GNE interface {
 	AddLocation(loc location.Location) error
 	RemoveLocation(locName string) error
 	GetLocations() location.Locations
+	GetRemoteLocationTypes() ([]location.RemoteLocationType, error)
 
 	AddTask(task task.Task) error
 	RemoveTask(taskName string) error
 	GetTasks() task.Tasks
+
+	GetTaskTypes() (types []task.TaskType, err error)
 
 	SetWaitTime(waitTime time.Duration) error
 	GetWaitTime() time.Duration
@@ -105,6 +108,10 @@ func (this *gne) GetLocations() location.Locations {
 	return this.locations
 }
 
+func (this *gne) GetRemoteLocationTypes() ([]location.RemoteLocationType, error) {
+	return location.ListRemoteLocationTypes(this.store)
+}
+
 func (this *gne) AddTask(task task.Task) error {
 	if _, ok := this.locations[task.Src()]; !ok {
 		return gstore.ErrLocationDoesNotExist
@@ -121,6 +128,10 @@ func (this *gne) RemoveTask(taskName string) error {
 
 func (this *gne) GetTasks() task.Tasks {
 	return this.tasks
+}
+
+func (this *gne) GetTaskTypes() (types []task.TaskType, err error) {
+	return task.ListTaskTypes(this.store)
 }
 
 func (this *gne) SetWaitTime(waitTime time.Duration) error {

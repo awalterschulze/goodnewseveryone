@@ -17,6 +17,7 @@ package files
 
 import (
 	"time"
+	goodtime "goodnewseveryone/time"
 	"io/ioutil"
 	"fmt"
 	"strings"
@@ -39,7 +40,7 @@ func filelistNameToLocationandTime(name string) (location string, t time.Time, e
 	if len(ss) != 2 {
 		return "", t, errors.New("filelist filename parse error")
 	}
-	t, err = stringToTime(ss[1])
+	t, err = goodtime.StringToNano(ss[1])
 	if err != nil {
 		return "", t, err
 	}
@@ -47,7 +48,7 @@ func filelistNameToLocationandTime(name string) (location string, t time.Time, e
 }
 
 func locationAndTimeToFilelistName(location string, t time.Time) string {
-	return fmt.Sprintf("%v---%v", location, timeToString(t))
+	return fmt.Sprintf("%v---%v", location, goodtime.NanoToString(t))
 }
 
 func (this *files) ListFilelists() (locations []string, times []time.Time, err error) {

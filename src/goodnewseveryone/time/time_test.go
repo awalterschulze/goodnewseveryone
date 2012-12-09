@@ -12,27 +12,21 @@
 //See the License for the specific language governing permissions and
 //limitations under the License.
 
-package web
+package time
 
 import (
-	gne "goodnewseveryone"
-	"net/http"
+	"testing"
+	"time"
 )
 
-var (
-	this = &web{}
-)
-
-type web struct {
-	gne gne.GNE
-}
-
-func newWeb(gne gne.GNE) *web {
-	this.gne = gne
-	return this
-}
-
-func Serve(gne gne.GNE) {
-	this = newWeb(gne)
-    http.ListenAndServe(":8080", nil)
+func TestTime(t *testing.T) {
+	now := time.Now()
+	s := timeToString(now)
+	now2, err := stringToTime(s)
+	if err != nil {
+		panic(err)
+	}
+	if !now.Equal(now2) {
+		t.Fatalf("Expected %v, but got %v", now, now2)
+	}
 }

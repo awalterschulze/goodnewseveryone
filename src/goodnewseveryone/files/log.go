@@ -23,6 +23,7 @@ import (
 	"strings"
 	"fmt"
 	"goodnewseveryone/store"
+	goodtime "goodnewseveryone/time"
 )
 
 const logTimeSep = " | "
@@ -49,11 +50,11 @@ func logFilenameToKey(filename string) string {
 }
 
 func keyToStr(key time.Time) string {
-	return timeToString(key)
+	return goodtime.NanoToString(key)
 }
 
 func strToKey(keyStr string) (time.Time, error) {
-	return stringToTime(keyStr)
+	return goodtime.StringToNano(keyStr)
 }
 
 func (this *files) NewLogSession(key time.Time) error {

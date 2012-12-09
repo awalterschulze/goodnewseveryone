@@ -15,24 +15,36 @@
 package web
 
 import (
-	gne "goodnewseveryone"
+	"testing"
 	"net/http"
+	"goodnewseveryone/files"
+	"goodnewseveryone"
+	"bytes"
 )
 
-var (
-	this = &web{}
-)
+type writer struct {
 
-type web struct {
-	gne gne.GNE
 }
 
-func newWeb(gne gne.GNE) *web {
-	this.gne = gne
-	return this
+func (this *writer) Header() http.Header {
+	return nil
 }
 
-func Serve(gne gne.GNE) {
-	this = newWeb(gne)
-    http.ListenAndServe(":8080", nil)
+func (this *writer) Write([]byte) (int, error) {
+	return 0, nil
+}
+
+func (this *writer) WriteHeader(int) {
+
+}
+
+func TestStatus(t *testing.T) {
+	newWeb(goodnewseveryone.NewGNE(files.NewFiles(".")))
+	r := bytes.NewBuffer(nil)
+	req, err := http.NewRequest(".", "/", r)
+	if err != nil {
+		panic(err)
+	}
+	w := &writer{}
+	this.handleStatus(w, req)
 }

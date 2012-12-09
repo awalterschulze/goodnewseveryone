@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"os"
 	"time"
+	goodtime "goodnewseveryone/time"
 )
 
 func taskTypeNameToFilename(taskTypeName string) (filename string) {
@@ -142,7 +143,7 @@ func (this *files) RemoveTask(taskName string) error {
 }
 
 func taskAndTimeToFilename(taskName string, t time.Time) (filename string) {
-	return fmt.Sprintf("%v---%v.complete", taskName, t.Format(defaultTimeFormat))
+	return fmt.Sprintf("%v---%v.complete", taskName, goodtime.NanoToString(t))
 }
 
 func filenameToTaskAndTime(filename string) (taskName string, t time.Time, err error) {
@@ -152,7 +153,7 @@ func filenameToTaskAndTime(filename string) (taskName string, t time.Time, err e
 		return "", time.Time{}, ErrUnableToParseFilename
 	}
 	taskName = ss[0]
-	t, err = time.Parse(defaultTimeFormat, ss[1])
+	t, err = goodtime.StringToNano(ss[1])
 	return taskName, t, err
 }
 
