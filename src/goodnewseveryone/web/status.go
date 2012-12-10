@@ -17,7 +17,10 @@ package web
 import (
 	"net/http"
 	"text/template"
-	"fmt"
+	"goodnewseveryone/log"
+    "time"
+    "sort"
+
 )
 
 func init() {
@@ -28,32 +31,86 @@ func init() {
 
 var (
 	statusTemplate = template.Must(template.New("status").Parse(`
-		<div>{{if .IsRunning}}Running{{else}}Not Running{{if .IsReady}}<a href="./now">Now</a>{{end}}{{end}}</div>
-		<div>{{if .IsReady}}Ready<a href="./stopandblock">StopAndBlock</a>{{else}}Blocked<a href="./unblock">Unblock</a>{{end}}</div>
+		<div>Busy with {{.BusyWith}}</div>
+		<div>{{if .Blocked}}Blocked<a href="./unblock">Unblock</a>{{else}}Unblocked<a href="./stopandblock">StopAndBlock</a>{{end}}</div>
 		<div>WaitTime {{.GetWaitTime}}<a href="./waittime">Set</a></div>
 		<div><a href="./man">Task Management</a></div>
 		<div><a href="./diffs">Diffs</a></div>
 		<div><a href=".">Current Status</a></div>
 	`))
+	logsTemplate = template.Must(template.New("logs").Parse(`
+		<table>
+		<tr><td>Viewing Logs</td><td>{{.CurrentMin}} - {{.CurrentMax}}</td>
+		<tr><td><a href="./?min={{.PreviousMin}}&max={{.PreviousMax}}">Previous</a></td>
+		<td><a href="./?min={{.NextMin}}&max={{.NextMax}}">Next</a></td></tr>
+		{{range .Contents}}
+			<tr><td></td><td></td></tr>
+			<tr><td>{{.At}}</td><td></td></tr>
+			<tr><td></td><td></td></tr>
+			{{range .Lines}}
+				<tr><td>{{.At.String}}</td><td>{{.Line}}</td></tr>
+			{{end}}
+		{{end}}
+		</table>
+	`))
 )
+
+type logs struct {
+	*timeRange
+	Contents []*log.LogOpenContent
+}
+
+func (this *web) newLogs(minTime, maxTime string) (*logs, error) {
+	logFiles, err := this.gne.GetLogs()
+	if err != nil {
+		return nil, err
+	}
+    sort.Sort(logFiles)
+    t, err := newTimeRange(minTime, maxTime)
+    if err != nil {
+    	return nil, err
+    }
+    if len(minTime) == 0 && len(logFiles) > 10 {
+    	t.min = logFiles[10].At.Add(-1*time.Nanosecond)
+    }
+    if len(maxTime) == 0 && len(logFiles) > 0 {
+    	t.max = logFiles[0].At.Add(time.Nanosecond)
+    }
+    contents := make([]*log.LogOpenContent, 0)
+    for _, l := range logFiles {
+    	if l.At.Before(t.max) && l.At.After(t.min) {
+    		content, err := l.Open()
+    		if err != nil {
+    			return nil, err
+    		} else {
+    			contents = append(contents, content)	
+    		}
+    	}
+    }
+    return &logs{
+    	timeRange: t,
+    	Contents: contents,
+    }, nil
+}
 
 func (this *web) handleStatus(w http.ResponseWriter, r *http.Request) {
 	min := r.FormValue("min")
 	max := r.FormValue("max")
-	headerTemplate.Execute(w, nil)
-	redirectHomeTemplate.Execute(w, &redirectHome{
+	execute(headerTemplate, w, nil)
+	execute(redirectHomeTemplate, w, &home{
 		Min: min,
 		Max: max,
 		Delay: slow,
 	})
-	statusTemplate.Execute(w, this.gne)
+	execute(statusTemplate, w, this.gne)
 	logs, err := this.newLogs(min, max)
 	if err != nil {
-		errorTemplate.Execute(w, fmt.Sprintf("%v", err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	} else {
-		logsTemplate.Execute(w, logs)
+		execute(logsTemplate, w, logs)
 	}
-	footerTemplate.Execute(w, nil)
+	execute(footerTemplate, w, nil)
 }
 
 

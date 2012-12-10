@@ -19,7 +19,7 @@ import (
 	
 )
 
-func TestStatus(t *testing.T) {
+func TestMan(t *testing.T) {
 	w, r := newHandles()
-	this.handleStatus(w, r)
+	this.handleMan(w, r)
 }

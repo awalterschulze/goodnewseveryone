@@ -19,7 +19,18 @@ import (
 	
 )
 
-func TestStatus(t *testing.T) {
+func TestUnblock(t *testing.T) {
 	w, r := newHandles()
-	this.handleStatus(w, r)
+	this.handleUnblock(w, r)
+}
+
+func TestStopAndBlock(t *testing.T) {
+	w, r := newHandles()
+	this.handleStopAndBlock(w, r)
+}
+
+func TestNow(t *testing.T) {
+	w, r := newHandles()
+	this.handleNow(w, r)
+	this.gne.End()
 }

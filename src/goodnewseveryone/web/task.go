@@ -85,15 +85,6 @@ var (
 			</table>
 		</form>
 	`))
-	tasksTemplate = template.Must(template.New("tasks").Parse(`
-		<div>Tasks</div>
-		<table>
-		<tr><td>Task</td><td></td><td>Last Completed Time</td></tr>
-		{{range .}}
-		<tr><td>{{.Id}}</td><td><a href="./removetask?task={{.Id}}">Remove</a></td><td>{{.LastCompleted}}</td></tr>
-		{{end}}
-		</table>
-	`))
 )
 
 type taskSetup struct {
@@ -101,33 +92,39 @@ type taskSetup struct {
 	TaskTypes []task.TaskType
 }
 
+func (this *web) handleRemoveTask(w http.ResponseWriter, r *http.Request) {
+	taskName := r.FormValue("name")
+	err := this.gne.RemoveTask(taskName)
+	if err != nil {
+		httpError(w, fmt.Sprintf("unable to remove task: %v", err))
+		return
+	}
+	redirectMan(w, r)
+}
+
 func (this *web) handleAddTask(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
+	execute(headerTemplate, w, nil)
 	taskTypes, err := this.gne.GetTaskTypes()
 	if err != nil {
-		redirectManTemplate.Execute(w, slow)
-		errorTemplate.Execute(w, fmt.Sprintf("unable to create task: %v", err))
-	} else {
-		setup := &taskSetup{
-			Locations: this.gne.GetLocations(),
-			TaskTypes: taskTypes,
-		}
-		addtaskTemplate.Execute(w, setup)
+		httpError(w, fmt.Sprintf("unable to create task: %v", err))
+		return
 	}
-	footerTemplate.Execute(w, nil)
+	setup := &taskSetup{
+		Locations: this.gne.GetLocations(),
+		TaskTypes: taskTypes,
+	}
+	execute(addtaskTemplate, w, setup)
+	execute(footerTemplate, w, nil)
 }
 
 func (this *web) handleAddTaskCall(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
 	name := r.FormValue("name")
 	typ := r.FormValue("typ")
 	src := r.FormValue("src")
 	dst := r.FormValue("dst")
 	taskTypes, err := this.gne.GetTaskTypes()
 	if err != nil {
-		redirectManTemplate.Execute(w, slow)
-		errorTemplate.Execute(w, fmt.Sprintf("unable to add task: %v", err))
-		footerTemplate.Execute(w, nil)
+		httpError(w, fmt.Sprintf("unable to add task: %v", err))
 		return
 	}
 	var taskType task.TaskType = nil
@@ -138,11 +135,9 @@ func (this *web) handleAddTaskCall(w http.ResponseWriter, r *http.Request) {
 	}
 	t := task.NewTask(name, taskType, src, dst)
 	if err := this.gne.AddTask(t); err != nil {
-		redirectManTemplate.Execute(w, slow)
-		errorTemplate.Execute(w, fmt.Sprintf("unable to add task: %v", err))
-	} else {
-		redirectManTemplate.Execute(w, quick)
+		httpError(w, fmt.Sprintf("unable to add task: %v", err))
+		return
 	}
-	footerTemplate.Execute(w, nil)
+	redirectMan(w, r)
 }
 

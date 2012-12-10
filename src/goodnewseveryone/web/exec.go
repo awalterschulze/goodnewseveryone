@@ -31,23 +31,16 @@ func init() {
 }
 
 func (this *web) handleUnblock(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
 	this.gne.Unblock()
-	redirectHomeTemplate.Execute(w, quickHome)
-	footerTemplate.Execute(w, nil)
+	http.Redirect(w, r, "../", http.StatusOK)
 }
 
 func (this *web) handleStopAndBlock(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
 	this.gne.StopAndBlock()
-	redirectHomeTemplate.Execute(w, quickHome)
-	footerTemplate.Execute(w, nil)
+	http.Redirect(w, r, "../", http.StatusOK)
 }
 
 func (this *web) handleNow(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
-	taskName := r.FormValue("name")
-	this.gne.Now(taskName)
-	redirectHomeTemplate.Execute(w, quickHome)
-	footerTemplate.Execute(w, nil)
+	this.gne.Now(r.FormValue("name"))
+	http.Redirect(w, r, "../", http.StatusOK)
 }

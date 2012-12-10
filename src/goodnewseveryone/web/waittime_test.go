@@ -19,7 +19,7 @@ import (
 	
 )
 
-func TestStatus(t *testing.T) {
+func TestWaitTime(t *testing.T) {
 	w, r := newHandles()
-	this.handleStatus(w, r)
+	this.handleWaitTime(w, r)
 }

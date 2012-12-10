@@ -19,7 +19,17 @@ import (
 	
 )
 
-func TestStatus(t *testing.T) {
+func TestTask(t *testing.T) {
 	w, r := newHandles()
-	this.handleStatus(w, r)
+	r.Form.Set("name", "locname2")
+	r.Form.Set("local", ".")
+	this.handleAddLocalCall(w, r)
+	this.handleAddTask(w, r)
+	r.Form.Set("name", "taskname")
+	r.Form.Set("src", "locname2")
+	r.Form.Set("dst", "locname2")
+	r.Form.Set("typ", "typname")
+	this.handleAddTaskCall(w, r)
+	this.handleRemoveTask(w, r)
 }
+

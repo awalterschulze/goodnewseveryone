@@ -16,6 +16,7 @@ package web
 
 import (
 	"text/template"
+	"net/http"
 )
 
 var (
@@ -35,18 +36,31 @@ var (
 )
 
 const (
-	quick = 0
 	slow = 5
 )
 
-type redirectHome struct {
+type home struct {
 	Min string
 	Max string
 	Delay int
 }
 
-var quickHome = &redirectHome{
-	Min: "",
-	Max: "",
-	Delay: quick,
+func execute(template *template.Template, w http.ResponseWriter, data interface{}) {
+	if err := template.Execute(w, data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
+
+func redirectMan(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "../man", http.StatusOK)
+}
+
+func redirectHome(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "../", http.StatusOK)
+}
+
+func httpError(w http.ResponseWriter, errString string) {
+	http.Error(w, errString, http.StatusInternalServerError)
+}
+
+

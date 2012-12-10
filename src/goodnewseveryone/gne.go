@@ -53,6 +53,7 @@ type GNE interface {
 	GetDiffs() (diff.DiffsPerLocation, error)
 
 	Start()
+	End()
 }
 
 type gne struct {
@@ -64,6 +65,7 @@ type gne struct {
 	waitTime time.Duration
 	waitChan <- chan time.Time
 	nowChan chan string
+	endChan chan bool
 }
 
 func NewGNE(store gstore.Store) GNE {
@@ -92,6 +94,7 @@ func NewGNE(store gstore.Store) GNE {
 		waitTime: waitTime,
 		waitChan: time.After(waitTime),
 		nowChan: make(chan string),
+		endChan: make(chan bool),
 	}
 	return gne
 }
@@ -205,7 +208,13 @@ func (this *gne) Start() {
 			this.waitChan = time.After(this.GetWaitTime())
 		case t := <-this.nowChan:
 			this.run(t)
+		case <- this.endChan:
+			return
 		}
 
 	}
+}
+
+func (this *gne) End() {
+	this.endChan <- true
 }

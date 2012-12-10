@@ -20,7 +20,6 @@ import (
 	"time"
 	"math"
 	goodtime "goodnewseveryone/time"
-	"fmt"
 )
 
 func init() {
@@ -158,16 +157,16 @@ func (this *web) newDiffs(location, minTime, maxTime string) (*diffs, error) {
 }
 
 func (this *web) handleDiffs(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
 	location := r.FormValue("location")
 	minTime := r.FormValue("min")
 	maxTime := r.FormValue("max")
-	diffLocationTemplate.Execute(w, this.gne.GetLocations())
+	execute(headerTemplate, w, nil)
+	execute(diffLocationTemplate, w, this.gne.GetLocations())
 	diffs, err := this.newDiffs(location, minTime, maxTime)
 	if err != nil {
-		errorTemplate.Execute(w, fmt.Sprintf("%v", err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else {
-		diffsTemplate.Execute(w, diffs)
+		execute(diffsTemplate, w, diffs)
 	}
-	footerTemplate.Execute(w, nil)
+	execute(footerTemplate, w, nil)
 }

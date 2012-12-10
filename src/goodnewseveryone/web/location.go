@@ -67,86 +67,54 @@ var (
 			</table>
 		</form>
 	`))
-	locationsTemplate = template.Must(template.New("locations").Parse(`
-		<div>Locations</div>
-		<table>
-		{{range .}}
-		<tr><td><div>{{.Id}}</div></td><td><a href="./removelocation?location={{.Id}}">Remove</a></td></tr>
-		{{end}}
-		</table>
-	`))
 )
 
 func (this *web) handleRemoveLocation(w http.ResponseWriter, r *http.Request) {
-	locName := r.FormValue("location")
+	locName := r.FormValue("name")
 	locations := this.gne.GetLocations()
 	location, ok := locations[locName]
 	if !ok {
-		headerTemplate.Execute(w, nil)
-		redirectManTemplate.Execute(w, slow)
-		errorTemplate.Execute(w, "location does not exist")
-		footerTemplate.Execute(w, nil)
+		httpError(w, "location does not exist")
 		return
 	}
 	err := this.gne.RemoveLocation(location.Id())
 	if err != nil {
-		headerTemplate.Execute(w, nil)
-		redirectManTemplate.Execute(w, slow)
-		errorTemplate.Execute(w, fmt.Sprintf("unable to remove location: %v", err))
-		footerTemplate.Execute(w, nil)
-	} else {
-		redirectManTemplate.Execute(w, quick)
+		httpError(w, fmt.Sprintf("unable to remove location: %v", err))
+		return
 	}
-}
-
-func (this *web) handleRemoveTask(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
-	taskName := r.FormValue("task")
-	err := this.gne.RemoveTask(taskName)
-	if err != nil {
-		redirectManTemplate.Execute(w, slow)
-		errorTemplate.Execute(w, fmt.Sprintf("unable to remove task: %v", err))
-	} else {
-		redirectManTemplate.Execute(w, quick)
-	}
-	footerTemplate.Execute(w, nil)
+	redirectMan(w, r)
 }
 
 func (this *web) handleAddLocal(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
-	addlocalTemplate.Execute(w, nil)
-	footerTemplate.Execute(w, nil)
+	execute(headerTemplate, w, nil)
+	execute(addlocalTemplate, w, nil)
+	execute(footerTemplate, w, nil)
 }
 
 func (this *web) handleAddLocalCall(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
-	local := r.FormValue("local")
 	name := r.FormValue("name")
+	local := r.FormValue("local")
 	location := location.NewLocalLocation(name, local)
 	err := this.gne.AddLocation(location)
 	if err != nil {
-		redirectManTemplate.Execute(w, slow)
-		errorTemplate.Execute(w, fmt.Sprintf("unable to add local location: %v", err))
-	} else {
-		redirectManTemplate.Execute(w, quick)
+		httpError(w, fmt.Sprintf("unable to add local location: %v", err))
+		return
 	}
-	footerTemplate.Execute(w, nil)
+	redirectMan(w, r)
 }
 
 func (this *web) handleAddRemote(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
 	types, err := this.gne.GetRemoteLocationTypes()
 	if err != nil {
-		redirectManTemplate.Execute(w, slow)
-		errorTemplate.Execute(w, fmt.Sprintf("unable to add remote location: %v", err))
-	} else {
-		addremoteTemplate.Execute(w, types)
+		httpError(w, fmt.Sprintf("unable to add remote location: %v", err))
+		return
 	}
-	footerTemplate.Execute(w, nil)
+	execute(headerTemplate, w, nil)
+	execute(addremoteTemplate, w, types)
+	execute(footerTemplate, w, nil)
 }
 
 func (this *web) handleAddRemoteCall(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
 	name := r.FormValue("name")
 	typ := r.FormValue("typ")
 	ipaddress := r.FormValue("ipaddress")
@@ -156,9 +124,7 @@ func (this *web) handleAddRemoteCall(w http.ResponseWriter, r *http.Request) {
 	local := r.FormValue("local")
 	types, err := this.gne.GetRemoteLocationTypes()
 	if err != nil {
-		redirectManTemplate.Execute(w, slow)
-		errorTemplate.Execute(w, fmt.Sprintf("unable to add remote location: %v", err))
-		footerTemplate.Execute(w, nil)
+		httpError(w, fmt.Sprintf("unable to add remote location: %v", err))
 		return
 	}
 	var mount, unmount string
@@ -170,11 +136,9 @@ func (this *web) handleAddRemoteCall(w http.ResponseWriter, r *http.Request) {
 	}
 	location := location.NewRemoteLocation(name, typ, ipaddress, username, password, remote, local, mount, unmount)
 	if err := this.gne.AddLocation(location); err != nil {
-		redirectManTemplate.Execute(w, slow)
-		errorTemplate.Execute(w, fmt.Sprintf("unable to add remote location: %v", err))
-	} else {
-		redirectManTemplate.Execute(w, quick)
+		httpError(w, fmt.Sprintf("unable to add remote location: %v", err))
+		return
 	}
-	footerTemplate.Execute(w, nil)
+	redirectMan(w, r)
 }
 

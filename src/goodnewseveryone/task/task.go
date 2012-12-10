@@ -232,6 +232,9 @@ func (this *task) NewCommand(locations location.Locations) (command.Command, err
 }
 
 func (this *task) TaskTypeName() string {
+	if this.typ == nil {
+		return ""
+	}
 	return this.typ.Name()
 }
 

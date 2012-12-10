@@ -19,7 +19,20 @@ import (
 	
 )
 
-func TestStatus(t *testing.T) {
+func TestLocalLocation(t *testing.T) {
 	w, r := newHandles()
-	this.handleStatus(w, r)
+	r.Form.Set("name", "locname")
+	r.Form.Set("local", ".")
+	this.handleAddLocal(w, r)
+	this.handleAddLocalCall(w, r)
+	this.handleRemoveLocation(w, r)
+}
+
+func TestRemoteLocation(t *testing.T) {
+	w, r := newHandles()
+	r.Form.Set("name", "locname")
+	r.Form.Set("local", ".")
+	this.handleAddRemote(w, r)
+	this.handleAddRemoteCall(w, r)
+	this.handleRemoveLocation(w, r)
 }

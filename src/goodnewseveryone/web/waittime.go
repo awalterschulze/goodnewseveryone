@@ -23,7 +23,7 @@ import (
 
 func init() {
 	http.HandleFunc("/waittime", func(w http.ResponseWriter, r *http.Request) {
-		this.handleWaittime(w,r)
+		this.handleWaitTime(w,r)
 	})
 }
 
@@ -39,8 +39,8 @@ var (
 		<div>invalid minutes received {{.}}</div>`))
 )
 
-func (this *web) handleWaittime(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
+func (this *web) handleWaitTime(w http.ResponseWriter, r *http.Request) {
+	execute(headerTemplate, w, nil)
 	minutes := r.FormValue("minutes")
 	if len(minutes) > 0 {
 		i, err := strconv.Atoi(minutes)
@@ -51,6 +51,6 @@ func (this *web) handleWaittime(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	currentMinutes := int(this.gne.GetWaitTime() / time.Minute)
-	waittimeTemplate.Execute(w, currentMinutes)
-	footerTemplate.Execute(w, nil)
+	execute(waittimeTemplate, w, currentMinutes)
+	execute(footerTemplate, w, nil)
 }

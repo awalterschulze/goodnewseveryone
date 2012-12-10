@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"fmt"
 	"os/exec"
+	"time"
 )
 
 func init() {
@@ -38,38 +39,80 @@ var (
 	graphnodesTemplate = template.Must(template.New("graphnodes").Parse(`
 		digraph {
 			{{range .}}
-			"{{.Id}}";
+			"{{.}}";
 			{{end}}
 	`))
 	graphedgesTemplate = template.Must(template.New("graphedges").Parse(`
 			{{range .}}
-			"{{.Src}}" -> "{{.Dst}}" [label="{{.Type}}"];
+			"{{.Src}}" -> "{{.Dst}}" [label="{{.TaskTypeName}}"];
 			{{end}}
 		}
 	`))
+	locationsTemplate = template.Must(template.New("locations").Parse(`
+		<div>Locations</div>
+		<table>
+		{{range .}}
+		<tr><td><div>{{.Id}}</div></td><td><a href="./removelocation?location={{.Id}}">Remove</a></td></tr>
+		{{end}}
+		</table>
+	`))
+	tasksTemplate = template.Must(template.New("tasks").Parse(`
+		<div>Tasks</div>
+		<table>
+		<tr><td>Task</td><td></td><td>Last Completed Time</td></tr>
+		{{range .}}
+		<tr><td>{{.Name}}</td><td><a href="./removetask?task={{.Name}}">Remove</a></td><td>{{.LastCompleted}}</td></tr>
+		{{end}}
+		</table>
+	`))
 )
 
+type taskItem struct {
+	Name string
+	LastCompleted time.Time
+	Src string
+	Dst string
+	TaskTypeName string
+}
+
 func (this *web) handleMan(w http.ResponseWriter, r *http.Request) {
-	headerTemplate.Execute(w, nil)
-	manTemplate.Execute(w, nil)
-	locationsTemplate.Execute(w, this.gne.GetLocations())
-	tasksTemplate.Execute(w, this.gne.GetTasks())
+	execute(headerTemplate, w, nil)
+	execute(manTemplate, w, nil)
+	execute(locationsTemplate, w, this.gne.GetLocations())
+	gettasks := this.gne.GetTasks()
+	tasks := make([]*taskItem, 0, len(gettasks.List()))
+	for _, t := range gettasks.List() {
+		task := gettasks.Get(t)
+		tasks = append(tasks, &taskItem{
+			Name: t,
+			LastCompleted: task.LastCompleted(),
+			Src: task.Src(),
+			Dst: task.Dst(),
+			TaskTypeName: task.TaskTypeName(),
+		})
+	}
+	execute(tasksTemplate, w, tasks)
 	c := exec.Command("dot", "-Tsvg")
 	in, err := c.StdinPipe()
 	if err != nil {
-		errorTemplate.Execute(w, fmt.Sprintf("%v", err))
-	} else {
-		go func() { 
-		graphnodesTemplate.Execute(in, this.gne.GetLocations())
-		graphedgesTemplate.Execute(in, this.gne.GetTasks())
-		in.Close()
-		}()
-		data, err := c.CombinedOutput()
-		if err != nil {
-			errorTemplate.Execute(w, fmt.Sprintf("%v", err))
-		} else {
-			fmt.Fprintf(w, "%v", string(data))
-		}
+		httpError(w, err.Error())
+		return
 	}
-	footerTemplate.Execute(w, nil)
+	locations := this.gne.GetLocations()
+	locs := make([]string, 0, len(locations))
+	for name, _ := range locations {
+		locs = append(locs, name)
+	}
+	go func() { 
+		graphnodesTemplate.Execute(in, locs)
+		graphedgesTemplate.Execute(in, tasks)
+		in.Close()
+	}()
+	data, err := c.CombinedOutput()
+	if err != nil {
+		execute(notificationTemplate, w, err.Error())
+		return
+	}
+	fmt.Fprintf(w, "%v", string(data))
+	execute(footerTemplate, w, nil)
 }
