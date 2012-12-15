@@ -1,0 +1,1 @@
+{"Mount":"curlftpfs %v:%v@%v/%v %v","Unmount":"fusermount -u %v"}

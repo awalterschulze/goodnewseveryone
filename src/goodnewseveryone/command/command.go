@@ -144,22 +144,6 @@ func NewMkdir(loc string) *command {
 	return NewCommand("mkdir %v", loc)
 }
 
-//TODO add mountpoint flag
-//http://stephen.rees-carter.net/2011/03/getting-unison-and-samba-to-play-nice/
-//http://www.cis.upenn.edu/~bcpierce/unison/download/releases/stable/unison-manual.html#fastcheck
-//-batch             batch mode: ask no questions at all
-/*func NewSync(loc1, loc2 string) *command {
-	return newCommand("unison", "-fastcheck", "true","-batch", "-dontchmod", "-perms", "0", loc1, loc2)
-}
-
-func NewBackup(loc1, loc2 string) *command {
-	return newCommand("rdiff-backup", loc1, loc2)
-}
-
-func NewMove(loc1, loc2 string) *command {
-	return newCommand("rsync", "-r", "--remove-source-files", loc1, loc2)
-}*/
-
 func NewMount(mount, ipAddress, username, password, remoteLoc, mountLoc string) *command {
 	return NewCensoredCommand(mount, username, password, ipAddress, remoteLoc, mountLoc)
 }
@@ -168,18 +152,3 @@ func NewUnmount(unmount, mountLoc string) *command {
 	return NewCommand(unmount, mountLoc)
 }
 
-/*func NewCifsMount(ipAddress, remoteLoc, mountLoc, username, password string) *command {
-	return newCensoredCommand("mount", "-t", "cifs", "//" + ipAddress + "/" + remoteLoc, mountLoc, "-o", "username="+username+",password="+password+",nounix,noserverino,sec=ntlmssp")
-}
-
-func NewCifsUmount(loc string) *command {
-	return newCommand("umount", "-l", loc)	
-}
-
-func NewFTPMount(ipAddress, remoteLoc, mountLoc, username, password string) *command {
-	return newCensoredCommand("curlftpfs", username+":"+password+"@"+ipAddress+"/"+remoteLoc, mountLoc)
-}
-
-func NewFTPUmount(loc string) *command {
-	return newCommand("fusermount", "-u", loc)
-}*/

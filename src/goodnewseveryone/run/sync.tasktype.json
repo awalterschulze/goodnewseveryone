@@ -1,0 +1,1 @@
+{"Name":"unisonsync","TaskType":"unison -fastcheck true -batch -dontchmod -perms 0 %v %v"}
