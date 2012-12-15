@@ -15,14 +15,14 @@
 package files
 
 import (
-	"os"
-	"sync"
-	"goodnewseveryone/store"
+	"encoding/json"
 	"errors"
+	"goodnewseveryone/store"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
-	"io/ioutil"
-	"encoding/json"
+	"sync"
 )
 
 var (
@@ -66,15 +66,15 @@ func (this *files) remove(filename string) error {
 
 type files struct {
 	sync.Mutex
-	root string
+	root         string
 	openLogFiles map[string]*os.File
-	logFiles []string
+	logFiles     []string
 }
 
 func NewFiles(root string) store.Store {
 	return &files{
-		root: root,
+		root:         root,
 		openLogFiles: make(map[string]*os.File),
-		logFiles: findLogFiles(root),
+		logFiles:     findLogFiles(root),
 	}
 }

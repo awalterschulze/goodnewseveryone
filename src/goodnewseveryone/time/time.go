@@ -15,10 +15,10 @@
 package time
 
 import (
-	"time"
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
+	"time"
 )
 
 const defaultTimeFormat = time.RFC3339
@@ -30,7 +30,7 @@ func NanoToString(t time.Time) string {
 func StringToNano(s string) (time.Time, error) {
 	ss := strings.Split(s, ".")
 	if len(ss) != 2 {
-		return time.Parse(defaultTimeFormat, s)	
+		return time.Parse(defaultTimeFormat, s)
 	}
 	t, err := time.Parse(defaultTimeFormat, ss[0])
 	if err != nil {

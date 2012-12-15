@@ -15,16 +15,16 @@
 package web
 
 import (
-	"text/template"
-	"net/http"
 	"fmt"
+	"net/http"
 	"os/exec"
+	"text/template"
 	"time"
 )
 
 func init() {
 	http.HandleFunc("/man", func(w http.ResponseWriter, r *http.Request) {
-		this.handleMan(w,r)
+		this.handleMan(w, r)
 	})
 }
 
@@ -68,11 +68,11 @@ var (
 )
 
 type taskItem struct {
-	Name string
+	Name          string
 	LastCompleted time.Time
-	Src string
-	Dst string
-	TaskTypeName string
+	Src           string
+	Dst           string
+	TaskTypeName  string
 }
 
 func (this *web) handleMan(w http.ResponseWriter, r *http.Request) {
@@ -84,11 +84,11 @@ func (this *web) handleMan(w http.ResponseWriter, r *http.Request) {
 	for _, t := range gettasks.List() {
 		task := gettasks.Get(t)
 		tasks = append(tasks, &taskItem{
-			Name: t,
+			Name:          t,
 			LastCompleted: task.LastCompleted(),
-			Src: task.Src(),
-			Dst: task.Dst(),
-			TaskTypeName: task.TaskTypeName(),
+			Src:           task.Src(),
+			Dst:           task.Dst(),
+			TaskTypeName:  task.TaskTypeName(),
 		})
 	}
 	execute(tasksTemplate, w, tasks)
@@ -103,7 +103,7 @@ func (this *web) handleMan(w http.ResponseWriter, r *http.Request) {
 	for name, _ := range locations {
 		locs = append(locs, name)
 	}
-	go func() { 
+	go func() {
 		graphnodesTemplate.Execute(in, locs)
 		graphedgesTemplate.Execute(in, tasks)
 		in.Close()

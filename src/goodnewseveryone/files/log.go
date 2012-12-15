@@ -15,15 +15,15 @@
 package files
 
 import (
-	"time"
-	"os"
-	"sort"
-	"path/filepath"
-	"io/ioutil"
-	"strings"
 	"fmt"
 	"goodnewseveryone/store"
 	goodtime "goodnewseveryone/time"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
 )
 
 const logTimeSep = " | "
@@ -38,7 +38,7 @@ func findLogFiles(root string) []string {
 		return nil
 	})
 	sort.Strings(filenames)
-  	return filenames
+	return filenames
 }
 
 func keyTologFilename(keyStr string) string {
@@ -121,7 +121,7 @@ func (this *files) WriteToLogSession(key time.Time, line string) error {
 	defer this.Unlock()
 	keyStr := keyToStr(key)
 	if logFile, ok := this.openLogFiles[keyStr]; ok {
-		str := fmt.Sprintf("%v%v%v%v", keyToStr(time.Now()), logTimeSep, line, logLineSep)	
+		str := fmt.Sprintf("%v%v%v%v", keyToStr(time.Now()), logTimeSep, line, logLineSep)
 		_, err := logFile.Write([]byte(str))
 		if err != nil {
 			return err

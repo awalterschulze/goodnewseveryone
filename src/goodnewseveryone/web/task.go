@@ -15,22 +15,22 @@
 package web
 
 import (
-	"text/template"
-	"net/http"
 	"fmt"
-	"goodnewseveryone/task"
 	"goodnewseveryone/location"
+	"goodnewseveryone/task"
+	"net/http"
+	"text/template"
 )
 
 func init() {
 	http.HandleFunc("/removetask", func(w http.ResponseWriter, r *http.Request) {
-		this.handleRemoveTask(w,r)
+		this.handleRemoveTask(w, r)
 	})
 	http.HandleFunc("/addtask", func(w http.ResponseWriter, r *http.Request) {
-		this.handleAddTask(w,r)
+		this.handleAddTask(w, r)
 	})
 	http.HandleFunc("/addtaskcall", func(w http.ResponseWriter, r *http.Request) {
-		this.handleAddTaskCall(w,r)
+		this.handleAddTaskCall(w, r)
 	})
 }
 
@@ -140,4 +140,3 @@ func (this *web) handleAddTaskCall(w http.ResponseWriter, r *http.Request) {
 	}
 	redirectMan(w, r)
 }
-

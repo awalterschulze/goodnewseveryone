@@ -48,7 +48,7 @@ func (this *files) ReadLocalLocation(name string) (localFolder string, err error
 	}
 	return l.Local, nil
 }
-	
+
 func (this *files) AddLocalLocation(name string, localFolder string) error {
 	this.Lock()
 	defer this.Unlock()
@@ -64,7 +64,7 @@ func (this *files) RemoveLocalLocation(name string) error {
 var remoteTypeFileSuffix = ".remotetype.json"
 
 type remoteType struct {
-	Mount string
+	Mount   string
 	Unmount string
 }
 
@@ -75,7 +75,7 @@ func remoteLocationTypeToFilename(name string) (filename string) {
 func filenameToRemoteLocationType(filename string) (name string) {
 	return strings.Replace(filename, remoteTypeFileSuffix, "", 1)
 }
-	
+
 func (this *files) ListRemoteLocationTypes() (names []string, err error) {
 	this.Lock()
 	defer this.Unlock()
@@ -107,11 +107,11 @@ func (this *files) RemoveRemoteLocationType(name string) error {
 var remoteFileSuffix = ".remote.json"
 
 type remote struct {
-	Type string
+	Type      string
 	IPAddress string
-	Username string
-	Password string
-	Remote string
+	Username  string
+	Password  string
+	Remote    string
 }
 
 func remoteLocationNameToFilename(name string) (filename string) {
@@ -121,7 +121,7 @@ func remoteLocationNameToFilename(name string) (filename string) {
 func filenameToRemoteLocationName(filename string) (name string) {
 	return strings.Replace(filename, remoteFileSuffix, "", 1)
 }
-	
+
 func (this *files) ListRemoteLocations() (names []string, err error) {
 	this.Lock()
 	defer this.Unlock()
@@ -137,13 +137,13 @@ func (this *files) ReadRemoteLocation(name string) (typ string, ipAddress string
 	}
 	return r.Type, r.IPAddress, r.Username, r.Password, r.Remote, nil
 }
-	
+
 func (this *files) AddRemoteLocation(name string, typ string, ipAddress string, username string, password string, remoteFolder string) error {
 	this.Lock()
 	defer this.Unlock()
 	return this.add(remoteLocationNameToFilename(name), &remote{typ, ipAddress, username, password, remoteFolder})
 }
-	
+
 func (this *files) RemoveRemoteLocation(name string) error {
 	this.Lock()
 	defer this.Unlock()

@@ -15,11 +15,11 @@
 package diff
 
 import (
+	"goodnewseveryone/store"
+	"os"
+	"path/filepath"
 	"sort"
 	"time"
-	"goodnewseveryone/store"
-	"path/filepath"
-	"os"
 )
 
 type filemap map[string]bool
@@ -35,7 +35,7 @@ func (this filemap) list() []string {
 
 type fileList struct {
 	Location string
-	At time.Time
+	At       time.Time
 }
 
 func newFileList(location string, at time.Time) *fileList {
@@ -85,9 +85,9 @@ func SaveFilelist(store store.FilelistStore, location string, at time.Time, file
 }
 
 type Diff struct {
-	store store.FilelistStore
+	store    store.FilelistStore
 	Previous time.Time
-	Current time.Time
+	Current  time.Time
 	Location string
 }
 
@@ -150,15 +150,15 @@ func NewDiffsPerLocation(store store.FilelistStore) (DiffsPerLocation, error) {
 	diffs := make(DiffsPerLocation)
 	sort.Sort(filelists)
 	for _, filelist := range filelists {
-		lastIndex := len(diffs[filelist.Location])-1
+		lastIndex := len(diffs[filelist.Location]) - 1
 		if lastIndex == -1 {
 			diffs[filelist.Location] = make(Diffs, 0)
 		} else {
 			diffs[filelist.Location][lastIndex].Previous = filelist.At
 		}
 		diffs[filelist.Location] = append(diffs[filelist.Location], &Diff{
-			store: store,
-			Current: filelist.At,
+			store:    store,
+			Current:  filelist.At,
 			Location: filelist.Location,
 		})
 	}

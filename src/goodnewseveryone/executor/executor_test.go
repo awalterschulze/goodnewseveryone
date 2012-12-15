@@ -15,14 +15,14 @@
 package executor
 
 import (
-	"testing"
+	"fmt"
+	"goodnewseveryone/command"
 	"goodnewseveryone/files"
+	"goodnewseveryone/kernel"
+	"goodnewseveryone/location"
 	"goodnewseveryone/log"
 	"goodnewseveryone/task"
-	"goodnewseveryone/location"
-	"goodnewseveryone/command"
-	"goodnewseveryone/kernel"
-	"fmt"
+	"testing"
 	"time"
 )
 
@@ -31,7 +31,6 @@ var (
 )
 
 type cmd struct {
-
 }
 
 func newCommand() *cmd {
@@ -54,21 +53,20 @@ type taskType struct {
 func (this *taskType) NewCommand(src, dst string) command.Command {
 	return newCommand()
 }
-	
+
 func (this *taskType) Name() string {
 	return this.name
 }
-	
+
 func (this *taskType) CmdStr() string {
 	panic("not implemented")
 }
 
 type loggy struct {
-
 }
 
 func (this *loggy) Write(str string) {
-	fmt.Printf(str+"\n")
+	fmt.Printf(str + "\n")
 }
 
 func (this *loggy) Run(name string, arg ...string) {
@@ -130,7 +128,7 @@ func TestExecutor(t *testing.T) {
 		close(w2)
 	}()
 	wait <- true
-	<- w2
+	<-w2
 	if len(e.BusyWith()) > 0 {
 		t.Fatalf("Expected done")
 	}

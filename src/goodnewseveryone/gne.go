@@ -15,16 +15,16 @@
 package goodnewseveryone
 
 import (
-	"time"
-	"sync"
-	gstore "goodnewseveryone/store"
-	"goodnewseveryone/log"
-	"goodnewseveryone/location"
-	"goodnewseveryone/kernel"
-	"goodnewseveryone/task"
+	"fmt"
 	"goodnewseveryone/diff"
 	"goodnewseveryone/executor"
-	"fmt"
+	"goodnewseveryone/kernel"
+	"goodnewseveryone/location"
+	"goodnewseveryone/log"
+	gstore "goodnewseveryone/store"
+	"goodnewseveryone/task"
+	"sync"
+	"time"
 )
 
 type GNE interface {
@@ -47,7 +47,7 @@ type GNE interface {
 	StopAndBlock()
 	Blocked() bool
 	BusyWith() (taskName string)
-	
+
 	GetLogs() (log.LogContents, error)
 
 	GetDiffs() (diff.DiffsPerLocation, error)
@@ -58,14 +58,14 @@ type GNE interface {
 
 type gne struct {
 	sync.Mutex
-	store gstore.Store
+	store     gstore.Store
 	locations location.Locations
-	tasks task.Tasks
-	executor executor.Executor
-	waitTime time.Duration
-	waitChan <- chan time.Time
-	nowChan chan string
-	endChan chan bool
+	tasks     task.Tasks
+	executor  executor.Executor
+	waitTime  time.Duration
+	waitChan  <-chan time.Time
+	nowChan   chan string
+	endChan   chan bool
 }
 
 func NewGNE(store gstore.Store) GNE {
@@ -87,14 +87,14 @@ func NewGNE(store gstore.Store) GNE {
 	}
 
 	gne := &gne{
-		store: store,
+		store:     store,
 		locations: locations,
-		tasks: tasks,
-		executor: executor.NewExecutor(kernel.NewKernel()),
-		waitTime: waitTime,
-		waitChan: time.After(waitTime),
-		nowChan: make(chan string),
-		endChan: make(chan bool),
+		tasks:     tasks,
+		executor:  executor.NewExecutor(kernel.NewKernel()),
+		waitTime:  waitTime,
+		waitChan:  time.After(waitTime),
+		nowChan:   make(chan string),
+		endChan:   make(chan bool),
 	}
 	return gne
 }
@@ -158,16 +158,16 @@ func (this *gne) Now(taskName string) {
 func (this *gne) Unblock() {
 	this.executor.Unblock()
 }
-	
-func (this *gne) StopAndBlock()  {
+
+func (this *gne) StopAndBlock() {
 	l, _ := log.NewLog(time.Now(), this.store)
 	this.executor.StopAndBlock(l)
 }
-	
+
 func (this *gne) Blocked() bool {
 	return this.executor.Blocked()
 }
-	
+
 func (this *gne) BusyWith() string {
 	return this.executor.BusyWith()
 }
@@ -203,12 +203,12 @@ func (this *gne) run(taskName string) {
 func (this *gne) Start() {
 	for {
 		select {
-		case <- this.waitChan:
+		case <-this.waitChan:
 			this.runAll()
 			this.waitChan = time.After(this.GetWaitTime())
 		case t := <-this.nowChan:
 			this.run(t)
-		case <- this.endChan:
+		case <-this.endChan:
 			return
 		}
 

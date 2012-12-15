@@ -21,8 +21,22 @@ import (
 
 func TestTime(t *testing.T) {
 	now := time.Now()
-	s := timeToString(now)
-	now2, err := stringToTime(s)
+	n := now.Nanosecond()
+	now = now.Add(time.Duration(-1 * n))
+	s := TimeToString(now)
+	now2, err := StringToTime(s)
+	if err != nil {
+		panic(err)
+	}
+	if !now.Equal(now2) {
+		t.Fatalf("Expected %v, but got %v", now, now2)
+	}
+}
+
+func TestNano(t *testing.T) {
+	now := time.Now()
+	s := NanoToString(now)
+	now2, err := StringToNano(s)
 	if err != nil {
 		panic(err)
 	}

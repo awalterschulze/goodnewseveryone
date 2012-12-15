@@ -15,17 +15,17 @@
 package log
 
 import (
-	"testing"
 	"errors"
-	"time"
+	"fmt"
 	"goodnewseveryone/files"
 	"goodnewseveryone/store"
-	"fmt"
 	"sort"
+	"testing"
+	"time"
 )
 
 type mockStore struct {
-	key time.Time
+	key   time.Time
 	lines []string
 	times []time.Time
 }
@@ -115,7 +115,7 @@ func TestFilesNewWriteRunErrorOutputReadClose(t *testing.T) {
 func TestFilesMultiple(t *testing.T) {
 	store := files.NewFiles(".")
 	num := 10
-	for i := 0; i < (num-1); i++ {
+	for i := 0; i < (num - 1); i++ {
 		l, err := NewLog(time.Date(i+10, 0, 0, 0, 0, 0, 0, time.UTC), store)
 		if err != nil {
 			panic(err)
@@ -152,5 +152,3 @@ func TestFilesMultiple(t *testing.T) {
 		}
 	}
 }
-
-

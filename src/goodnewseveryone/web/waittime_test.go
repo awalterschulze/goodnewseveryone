@@ -16,7 +16,6 @@ package web
 
 import (
 	"testing"
-	
 )
 
 func TestWaitTime(t *testing.T) {

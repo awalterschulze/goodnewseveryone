@@ -16,7 +16,6 @@ package web
 
 import (
 	"testing"
-	
 )
 
 func TestDiff(t *testing.T) {

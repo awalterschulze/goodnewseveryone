@@ -34,5 +34,5 @@ func newWeb(gne gne.GNE) *web {
 
 func Serve(gne gne.GNE) {
 	this = newWeb(gne)
-    http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":8080", nil)
 }

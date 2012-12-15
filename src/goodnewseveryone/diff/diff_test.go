@@ -15,8 +15,8 @@
 package diff
 
 import (
-	"testing"
 	"goodnewseveryone/files"
+	"testing"
 	"time"
 )
 
@@ -31,7 +31,6 @@ func TestDiff(t *testing.T) {
 	if len(diffs) != 0 {
 		t.Fatalf("expected no diffs, but there is %v", diffs)
 	}
-	
 
 	now1 := time.Now()
 	files1, err := CreateFilelist(location)

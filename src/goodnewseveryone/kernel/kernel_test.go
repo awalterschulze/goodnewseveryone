@@ -1,8 +1,8 @@
 package kernel
 
 import (
-	"testing"
 	"goodnewseveryone/log"
+	"testing"
 )
 
 type sleep struct {
@@ -48,7 +48,7 @@ func TestRun(t *testing.T) {
 	s := newSleep()
 	k := NewKernel()
 	w := make(chan bool)
-	go func() { 
+	go func() {
 		if _, err := k.Run(nil, s); err != nil {
 			panic(err)
 		}
@@ -62,7 +62,7 @@ func TestStop(t *testing.T) {
 	s := newSleep()
 	k := NewKernel()
 	w := make(chan bool)
-	go func() { 
+	go func() {
 		if _, err := k.Run(nil, s); err == nil {
 			t.Fatalf("Expected Error")
 		}
@@ -98,7 +98,7 @@ func TestSudoRun(t *testing.T) {
 	k := NewKernel()
 	k.StopAndBlock(nil)
 	w := make(chan bool)
-	go func() { 
+	go func() {
 		k.SudoRun(nil, s)
 		close(w)
 	}()
@@ -110,7 +110,7 @@ func TestRunBlockSudoRun(t *testing.T) {
 	s := newSleep()
 	k := NewKernel()
 	w := make(chan bool)
-	go func() { 
+	go func() {
 		if _, err := k.Run(nil, s); err == nil {
 			t.Fatalf("Expected Error")
 		}
@@ -120,7 +120,7 @@ func TestRunBlockSudoRun(t *testing.T) {
 	<-w
 	s2 := newSleep()
 	w2 := make(chan bool)
-	go func() { 
+	go func() {
 		k.SudoRun(nil, s2)
 		close(w2)
 	}()
@@ -153,5 +153,3 @@ func TestManyRuns(t *testing.T) {
 		}
 	}
 }
-
-

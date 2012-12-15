@@ -16,7 +16,6 @@ package web
 
 import (
 	"testing"
-	
 )
 
 func TestTask(t *testing.T) {
@@ -31,5 +30,6 @@ func TestTask(t *testing.T) {
 	r.Form.Set("typ", "typname")
 	this.handleAddTaskCall(w, r)
 	this.handleRemoveTask(w, r)
+	r.Form.Set("name", "locname2")
+	this.handleRemoveLocation(w, r)
 }
-

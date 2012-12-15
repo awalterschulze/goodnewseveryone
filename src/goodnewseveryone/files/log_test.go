@@ -15,9 +15,9 @@
 package files
 
 import (
+	"fmt"
 	"testing"
 	"time"
-	"fmt"
 )
 
 func TestNewCloseDelete(t *testing.T) {
@@ -107,4 +107,3 @@ func TestDeleteOpen(t *testing.T) {
 		panic(err)
 	}
 }
-

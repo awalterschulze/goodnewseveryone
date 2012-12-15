@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-type Store interface{
+type Store interface {
 	LogStore
 	TaskStore
 	LocationStore
@@ -28,8 +28,8 @@ type Store interface{
 }
 
 var (
-	ErrLogSessionAlreadyExists = errors.New("Log Session with key already exists")
-	ErrLogSessionDoesNotExist = errors.New("Log Session with key does not exist")
+	ErrLogSessionAlreadyExists      = errors.New("Log Session with key already exists")
+	ErrLogSessionDoesNotExist       = errors.New("Log Session with key does not exist")
 	ErrLogSessionIsOpenCannotDelete = errors.New("Log Session is open, it cannot be deleted")
 )
 
@@ -44,8 +44,8 @@ type LogStore interface {
 
 var (
 	ErrTaskTypeDoesNotExist = errors.New("Task Type does not exist")
-	ErrTaskAlreadyExists = errors.New("Task already exists")
-	ErrTaskDoesNotExist = errors.New("Task does not exist")
+	ErrTaskAlreadyExists    = errors.New("Task already exists")
+	ErrTaskDoesNotExist     = errors.New("Task does not exist")
 )
 
 type TaskStore interface {
@@ -65,8 +65,8 @@ type TaskStore interface {
 }
 
 var (
-	ErrLocationDoesNotExist = errors.New("Location does not exist")
-	ErrLocationAlreadyExists = errors.New("Location already exists")
+	ErrLocationDoesNotExist           = errors.New("Location does not exist")
+	ErrLocationAlreadyExists          = errors.New("Location already exists")
 	ErrRemoteLocationTypeDoesNotExist = errors.New("Remote Location Type does not exist")
 )
 
@@ -102,4 +102,3 @@ type ConfigStore interface {
 	GetMountFolder() (string, error)
 	SetMountFolder(folder string) error
 }
-

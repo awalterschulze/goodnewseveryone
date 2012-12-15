@@ -16,8 +16,8 @@ package files
 
 import (
 	"goodnewseveryone/store"
-	"testing"
 	"reflect"
+	"testing"
 )
 
 func (this *local) Equal(that data) bool {
@@ -78,11 +78,11 @@ func TestRemoteLocation(t *testing.T) {
 		read: func(store store.Store, name string) (data data, err error) {
 			typ, ipAddress, username, password, remoteFolder, err := store.ReadRemoteLocation(name)
 			r := &remote{
-				Type: typ,
+				Type:      typ,
 				IPAddress: ipAddress,
-				Username: username,
-				Password: password,
-				Remote: remoteFolder,
+				Username:  username,
+				Password:  password,
+				Remote:    remoteFolder,
 			}
 			return r, err
 		},
@@ -94,10 +94,10 @@ func TestRemoteLocation(t *testing.T) {
 			return store.RemoveRemoteLocation(name)
 		},
 	}.test(t, "SharedFolder", &remote{
-		Type: "smb",
+		Type:      "smb",
 		IPAddress: "192.168.0.1",
-		Username: "walter",
-		Password: "schulze",
-		Remote: "Share",
+		Username:  "walter",
+		Password:  "schulze",
+		Remote:    "Share",
 	})
 }

@@ -15,18 +15,18 @@
 package log
 
 import (
-	"strings"
 	"fmt"
-	"time"
-	"sort"
 	"goodnewseveryone/store"
+	"sort"
+	"strings"
+	"time"
 )
 
 const DefaultTimeFormat = "2006-01-02T15:04:05Z"
 const logLineSep = " | "
 
 type log struct {
-	store store.LogStore
+	store      store.LogStore
 	sessionKey time.Time
 }
 
@@ -54,7 +54,7 @@ func (this *log) Write(str string) {
 			if len(strings.TrimSpace(s)) > 0 {
 				this.store.WriteToLogSession(this.sessionKey, strings.TrimSpace(s))
 				fmt.Printf("%v\n", strings.TrimSpace(s))
-			}	
+			}
 		}
 	}
 }
@@ -92,15 +92,15 @@ func (this LogContents) Less(i, j int) bool {
 func NewLogContents(store store.LogStore) (LogContents, error) {
 	times := store.ListLogSessions()
 	res := make(LogContents, len(times))
-  	for i, t := range times {
-  		res[i] = newLogContent(store, t)
-  	}
-  	return res, nil
+	for i, t := range times {
+		res[i] = newLogContent(store, t)
+	}
+	return res, nil
 }
 
 type LogContent struct {
 	store store.LogStore
-	At time.Time
+	At    time.Time
 }
 
 func newLogContent(store store.LogStore, at time.Time) *LogContent {
@@ -109,8 +109,8 @@ func newLogContent(store store.LogStore, at time.Time) *LogContent {
 
 type LogLine struct {
 	Number int
-	At time.Time
-	Line string
+	At     time.Time
+	Line   string
 }
 
 type LogLines []*LogLine
@@ -128,7 +128,7 @@ func (this LogLines) Swap(i, j int) {
 }
 
 type LogOpenContent struct {
-	At time.Time
+	At    time.Time
 	Lines LogLines
 }
 
@@ -138,17 +138,16 @@ func (this *LogContent) Open() (*LogOpenContent, error) {
 		return nil, err
 	}
 	content := &LogOpenContent{
-		At: this.At,
+		At:    this.At,
 		Lines: make(LogLines, 0),
 	}
 	for i := 0; i < len(ts); i++ {
 		content.Lines = append(content.Lines, &LogLine{
 			Number: i,
-			At: ts[i],
-			Line: cs[i],
+			At:     ts[i],
+			Line:   cs[i],
 		})
 	}
 	sort.Sort(content.Lines)
 	return content, nil
 }
-	

@@ -15,10 +15,10 @@
 package kernel
 
 import (
-	"sync"
 	"errors"
 	"goodnewseveryone/command"
 	"goodnewseveryone/log"
+	"sync"
 )
 
 var (

@@ -20,13 +20,13 @@ import (
 
 func init() {
 	http.HandleFunc("/unblock", func(w http.ResponseWriter, r *http.Request) {
-		this.handleUnblock(w,r)
+		this.handleUnblock(w, r)
 	})
 	http.HandleFunc("/stopandblock", func(w http.ResponseWriter, r *http.Request) {
-		this.handleStopAndBlock(w,r)
+		this.handleStopAndBlock(w, r)
 	})
 	http.HandleFunc("/now", func(w http.ResponseWriter, r *http.Request) {
-		this.handleNow(w,r)
+		this.handleNow(w, r)
 	})
 }
 

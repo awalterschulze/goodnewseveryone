@@ -15,8 +15,8 @@
 package files
 
 import (
-	"testing"
 	"goodnewseveryone/store"
+	"testing"
 )
 
 type data interface {
@@ -29,13 +29,13 @@ type addFunc func(store store.Store, name string, data data) error
 type removeFunc func(store store.Store, name string) error
 
 type testStore struct {
-	list listFunc
-	read readFunc
-	add addFunc
+	list   listFunc
+	read   readFunc
+	add    addFunc
 	remove removeFunc
 }
 
-func (this 	testStore) test(t *testing.T, name string, data data) {
+func (this testStore) test(t *testing.T, name string, data data) {
 	f := NewFiles(".")
 	if err := this.add(f, name, data); err != nil {
 		panic(err)

@@ -15,11 +15,11 @@
 package goodnewseveryone
 
 import (
-	"testing"
+	"goodnewseveryone/command"
 	"goodnewseveryone/files"
 	"goodnewseveryone/location"
-	"goodnewseveryone/command"
 	"goodnewseveryone/log"
+	"testing"
 	"time"
 )
 
@@ -67,10 +67,10 @@ func (this *mockCommand) Stop(log log.Log) {
 }
 
 type mockTask struct {
-	name string
-	cmd *mockCommand
-	src string
-	dst string
+	name      string
+	cmd       *mockCommand
+	src       string
+	dst       string
 	completed time.Time
 }
 
@@ -117,9 +117,9 @@ func TestTasks(t *testing.T) {
 	}
 	task := &mockTask{
 		name: name,
-		cmd: cmd,
-		src: src,
-		dst: dst,
+		cmd:  cmd,
+		src:  src,
+		dst:  dst,
 	}
 	if err := gne.AddTask(task); err != nil {
 		panic(err)
@@ -139,7 +139,7 @@ func TestTasks(t *testing.T) {
 	taskNames = tasks.List()
 	if len(taskNames) != 0 {
 		t.Fatalf("Expected 0, but got %v tasks", len(taskNames))
-	} 
+	}
 	if err := gne.RemoveLocation(src); err != nil {
 		panic(err)
 	}
@@ -165,17 +165,17 @@ func TestDiffs(t *testing.T) {
 	}
 	task := &mockTask{
 		name: name,
-		cmd: cmd,
-		src: src,
-		dst: dst,
+		cmd:  cmd,
+		src:  src,
+		dst:  dst,
 	}
 	if err := gne.AddTask(task); err != nil {
 		panic(err)
 	}
 	go gne.Now(name)
-	<- done
+	<-done
 	go gne.Now(name)
-	<- done
+	<-done
 	diffs, err := gne.GetDiffs()
 	if err != nil {
 		panic(err)
@@ -226,26 +226,26 @@ func TestWaitTime(t *testing.T) {
 	}
 	task := &mockTask{
 		name: name,
-		cmd: cmd,
-		src: src,
-		dst: dst,
+		cmd:  cmd,
+		src:  src,
+		dst:  dst,
 	}
 	if err := gne.AddTask(task); err != nil {
 		panic(err)
 	}
 	sec := time.Second
-	aftertwo := time.After(3*time.Second)
+	aftertwo := time.After(3 * time.Second)
 	if err := gne.SetWaitTime(sec); err != nil {
 		panic(err)
 	}
 	for i := 0; i < 5; i++ {
 		select {
-		case <- aftertwo:
+		case <-aftertwo:
 			t.Fatalf("Task %v started to late", i)
-		case <- done:
+		case <-done:
 
 		}
-		aftertwo = time.After(2*time.Second)
+		aftertwo = time.After(2 * time.Second)
 	}
 	w := gne.GetWaitTime()
 	if w != sec {
@@ -279,9 +279,9 @@ func TestNow(t *testing.T) {
 	}
 	task := &mockTask{
 		name: name,
-		cmd: cmd,
-		src: src,
-		dst: dst,
+		cmd:  cmd,
+		src:  src,
+		dst:  dst,
 	}
 	if err := gne.AddTask(task); err != nil {
 		panic(err)
@@ -293,9 +293,9 @@ func TestNow(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		gne.Now(name)
 		select {
-		case <- aftermin:
+		case <-aftermin:
 			t.Fatalf("Task %v started to late", i)
-		case <- done:
+		case <-done:
 
 		}
 	}
@@ -327,9 +327,9 @@ func TestBusyWith(t *testing.T) {
 	}
 	task := &mockTask{
 		name: name,
-		cmd: cmd,
-		src: src,
-		dst: dst,
+		cmd:  cmd,
+		src:  src,
+		dst:  dst,
 	}
 	if err := gne.AddTask(task); err != nil {
 		panic(err)
@@ -340,7 +340,7 @@ func TestBusyWith(t *testing.T) {
 	if busy != name {
 		t.Fatalf("%v", busy)
 	}
-	<- done
+	<-done
 	time.Sleep(time.Second)
 	busy = gne.BusyWith()
 	if len(busy) > 0 {
@@ -374,9 +374,9 @@ func TestBlock(t *testing.T) {
 	}
 	task := &mockTask{
 		name: name,
-		cmd: cmd,
-		src: src,
-		dst: dst,
+		cmd:  cmd,
+		src:  src,
+		dst:  dst,
 	}
 	if err := gne.AddTask(task); err != nil {
 		panic(err)
@@ -388,16 +388,16 @@ func TestBlock(t *testing.T) {
 	gne.Now(name)
 	time.Sleep(time.Second)
 	select {
-		default:
+	default:
 
-		case <- done:
-			t.Fatalf("Expected Blocked")
+	case <-done:
+		t.Fatalf("Expected Blocked")
 	}
 	time.Sleep(time.Second)
 	gne.Unblock()
 	gne.Now(name)
 	time.Sleep(time.Second)
-	<- done
+	<-done
 	if err := gne.RemoveTask(name); err != nil {
 		panic(err)
 	}
@@ -408,4 +408,3 @@ func TestBlock(t *testing.T) {
 		panic(err)
 	}
 }
-

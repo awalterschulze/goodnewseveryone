@@ -15,9 +15,9 @@
 package files
 
 import (
+	"reflect"
 	"testing"
 	"time"
-	"reflect"
 )
 
 func TestFilelist(t *testing.T) {

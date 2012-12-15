@@ -15,27 +15,27 @@
 package web
 
 import (
-	"text/template"
-	"net/http"
 	"fmt"
 	"goodnewseveryone/location"
+	"net/http"
+	"text/template"
 )
 
 func init() {
 	http.HandleFunc("/addlocal", func(w http.ResponseWriter, r *http.Request) {
-		this.handleAddLocal(w,r)
+		this.handleAddLocal(w, r)
 	})
 	http.HandleFunc("/addlocalcall", func(w http.ResponseWriter, r *http.Request) {
-		this.handleAddLocalCall(w,r)
+		this.handleAddLocalCall(w, r)
 	})
 	http.HandleFunc("/removelocation", func(w http.ResponseWriter, r *http.Request) {
-		this.handleRemoveLocation(w,r)
+		this.handleRemoveLocation(w, r)
 	})
 	http.HandleFunc("/addremote", func(w http.ResponseWriter, r *http.Request) {
-		this.handleAddRemote(w,r)
+		this.handleAddRemote(w, r)
 	})
 	http.HandleFunc("/addremotecall", func(w http.ResponseWriter, r *http.Request) {
-		this.handleAddRemoteCall(w,r)
+		this.handleAddRemoteCall(w, r)
 	})
 }
 
@@ -141,4 +141,3 @@ func (this *web) handleAddRemoteCall(w http.ResponseWriter, r *http.Request) {
 	}
 	redirectMan(w, r)
 }
-

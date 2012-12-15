@@ -15,16 +15,15 @@
 package web
 
 import (
+	"bytes"
+	"fmt"
+	"goodnewseveryone"
+	"goodnewseveryone/files"
 	"net/http"
 	"net/url"
-	"fmt"
-	"bytes"
-	"goodnewseveryone/files"
-	"goodnewseveryone"
 )
 
 type writer struct {
-
 }
 
 func (this *writer) Header() http.Header {
@@ -58,4 +57,3 @@ func newHandles() (w http.ResponseWriter, r *http.Request) {
 	go g.Start()
 	return &writer{}, newRequest()
 }
-

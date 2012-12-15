@@ -1,9 +1,9 @@
 package task
 
 import (
-	"testing"
 	"goodnewseveryone/files"
 	"reflect"
+	"testing"
 	"time"
 )
 
@@ -17,7 +17,7 @@ func TestTaskTypes(t *testing.T) {
 		t.Fatalf("expected no task types, but read %v", types)
 	}
 	taskType := &taskType{
-		name: "move",
+		name:   "move",
 		cmdStr: "rsync -r --remove-source-files %v %v",
 	}
 	if err := AddTaskType(f, taskType); err != nil {
@@ -55,7 +55,7 @@ func TestTasks(t *testing.T) {
 		t.Fatalf("expected no tasks, but read %v", tasks.tasks)
 	}
 	taskType := &taskType{
-		name: "move",
+		name:   "move",
 		cmdStr: "rsync -r --remove-source-files %v %v",
 	}
 	if err := AddTaskType(f, taskType); err != nil {
@@ -100,7 +100,7 @@ func TestTasks(t *testing.T) {
 func TestCompleted(t *testing.T) {
 	f := files.NewFiles(".")
 	taskType := &taskType{
-		name: "move",
+		name:   "move",
 		cmdStr: "rsync -r --remove-source-files %v %v",
 	}
 	if err := AddTaskType(f, taskType); err != nil {
@@ -112,9 +112,9 @@ func TestCompleted(t *testing.T) {
 	}
 	task := &task{
 		name: "moveshared",
-		typ: taskType,
-		src: "Home",
-		dst: "SharedFolder",
+		typ:  taskType,
+		src:  "Home",
+		dst:  "SharedFolder",
 	}
 	if err := tasks.Add(task); err != nil {
 		panic(err)
@@ -143,11 +143,3 @@ func TestCompleted(t *testing.T) {
 		panic(err)
 	}
 }
-
-
-
-
-
-
-
-

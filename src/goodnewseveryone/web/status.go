@@ -15,17 +15,16 @@
 package web
 
 import (
-	"net/http"
-	"text/template"
 	"goodnewseveryone/log"
-    "time"
-    "sort"
-
+	"net/http"
+	"sort"
+	"text/template"
+	"time"
 )
 
 func init() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		this.handleStatus(w,r)
+		this.handleStatus(w, r)
 	})
 }
 
@@ -65,32 +64,32 @@ func (this *web) newLogs(minTime, maxTime string) (*logs, error) {
 	if err != nil {
 		return nil, err
 	}
-    sort.Sort(logFiles)
-    t, err := newTimeRange(minTime, maxTime)
-    if err != nil {
-    	return nil, err
-    }
-    if len(minTime) == 0 && len(logFiles) > 10 {
-    	t.min = logFiles[10].At.Add(-1*time.Nanosecond)
-    }
-    if len(maxTime) == 0 && len(logFiles) > 0 {
-    	t.max = logFiles[0].At.Add(time.Nanosecond)
-    }
-    contents := make([]*log.LogOpenContent, 0)
-    for _, l := range logFiles {
-    	if l.At.Before(t.max) && l.At.After(t.min) {
-    		content, err := l.Open()
-    		if err != nil {
-    			return nil, err
-    		} else {
-    			contents = append(contents, content)	
-    		}
-    	}
-    }
-    return &logs{
-    	timeRange: t,
-    	Contents: contents,
-    }, nil
+	sort.Sort(logFiles)
+	t, err := newTimeRange(minTime, maxTime)
+	if err != nil {
+		return nil, err
+	}
+	if len(minTime) == 0 && len(logFiles) > 10 {
+		t.min = logFiles[10].At.Add(-1 * time.Nanosecond)
+	}
+	if len(maxTime) == 0 && len(logFiles) > 0 {
+		t.max = logFiles[0].At.Add(time.Nanosecond)
+	}
+	contents := make([]*log.LogOpenContent, 0)
+	for _, l := range logFiles {
+		if l.At.Before(t.max) && l.At.After(t.min) {
+			content, err := l.Open()
+			if err != nil {
+				return nil, err
+			} else {
+				contents = append(contents, content)
+			}
+		}
+	}
+	return &logs{
+		timeRange: t,
+		Contents:  contents,
+	}, nil
 }
 
 func (this *web) handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -98,8 +97,8 @@ func (this *web) handleStatus(w http.ResponseWriter, r *http.Request) {
 	max := r.FormValue("max")
 	execute(headerTemplate, w, nil)
 	execute(redirectHomeTemplate, w, &home{
-		Min: min,
-		Max: max,
+		Min:   min,
+		Max:   max,
 		Delay: slow,
 	})
 	execute(statusTemplate, w, this.gne)
@@ -112,5 +111,3 @@ func (this *web) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	execute(footerTemplate, w, nil)
 }
-
-

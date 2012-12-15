@@ -15,14 +15,14 @@
 package files
 
 import (
-	"path/filepath"
-	"fmt"
-	"strings"
 	"encoding/json"
+	"fmt"
+	goodtime "goodnewseveryone/time"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
-	goodtime "goodnewseveryone/time"
 )
 
 func taskTypeNameToFilename(taskTypeName string) (filename string) {
@@ -34,7 +34,7 @@ func filenameToTaskTypeName(filename string) (taskTypeName string) {
 }
 
 type taskType struct {
-	Name string
+	Name     string
 	TaskType string
 }
 
@@ -58,13 +58,13 @@ func (this *files) ReadTaskType(name string) (string, error) {
 	}
 	return t.TaskType, nil
 }
-	
+
 func (this *files) AddTaskType(name string, tt string) error {
 	this.Lock()
 	defer this.Unlock()
 	filename := taskTypeNameToFilename(name)
 	t := taskType{
-		Name: name,
+		Name:     name,
 		TaskType: tt,
 	}
 	data, err := json.Marshal(t)
@@ -76,7 +76,7 @@ func (this *files) AddTaskType(name string, tt string) error {
 	}
 	return nil
 }
-	
+
 func (this *files) RemoveTaskType(name string) error {
 	this.Lock()
 	defer this.Unlock()
@@ -116,7 +116,7 @@ func (this *files) ReadTask(taskName string) (src, taskType, dst string, err err
 	}
 	return t.Src, t.Typ, t.Dst, nil
 }
-	
+
 func (this *files) AddTask(taskName string, src, taskType, dst string) error {
 	this.Lock()
 	defer this.Unlock()
@@ -135,7 +135,7 @@ func (this *files) AddTask(taskName string, src, taskType, dst string) error {
 	}
 	return nil
 }
-	
+
 func (this *files) RemoveTask(taskName string) error {
 	this.Lock()
 	defer this.Unlock()
@@ -177,7 +177,7 @@ func (this *files) ListTaskCompleted(taskName string) (times []time.Time, err er
 	})
 	return times, err
 }
-	
+
 func (this *files) AddTaskCompleted(taskName string, now time.Time) error {
 	this.Lock()
 	defer this.Unlock()
@@ -188,7 +188,7 @@ func (this *files) AddTaskCompleted(taskName string, now time.Time) error {
 	}
 	return f.Close()
 }
-	
+
 func (this *files) RemoveTaskCompleted(taskName string, then time.Time) error {
 	this.Lock()
 	defer this.Unlock()

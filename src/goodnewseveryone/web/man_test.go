@@ -16,7 +16,6 @@ package web
 
 import (
 	"testing"
-	
 )
 
 func TestMan(t *testing.T) {

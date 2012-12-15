@@ -12,17 +12,16 @@
 //See the License for the specific language governing permissions and
 //limitations under the License.
 
-
 package files
 
 import (
-	"time"
+	"errors"
+	"fmt"
 	goodtime "goodnewseveryone/time"
 	"io/ioutil"
-	"fmt"
-	"strings"
 	"os"
-	"errors"
+	"strings"
+	"time"
 )
 
 var filelistSuffix = ".filelist.txt"
@@ -70,7 +69,7 @@ func (this *files) ListFilelists() (locations []string, times []time.Time, err e
 	}
 	return locations, times, nil
 }
-	
+
 func (this *files) ReadFilelist(location string, t time.Time) ([]string, error) {
 	this.Lock()
 	defer this.Unlock()
@@ -82,7 +81,7 @@ func (this *files) ReadFilelist(location string, t time.Time) ([]string, error) 
 	lines := strings.Split(string(data), "\n")
 	return lines, nil
 }
-	
+
 func (this *files) AddFilelist(location string, t time.Time, files []string) error {
 	this.Lock()
 	defer this.Unlock()
@@ -90,7 +89,7 @@ func (this *files) AddFilelist(location string, t time.Time, files []string) err
 	data := []byte(strings.Join(files, "\n"))
 	return ioutil.WriteFile(filename, data, 0666)
 }
-	
+
 func (this *files) RemoveFilelist(location string, t time.Time) error {
 	this.Lock()
 	defer this.Unlock()

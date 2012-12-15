@@ -15,10 +15,10 @@
 package task
 
 import (
-	"time"
-	gstore "goodnewseveryone/store"
-	"goodnewseveryone/location"
 	"goodnewseveryone/command"
+	"goodnewseveryone/location"
+	gstore "goodnewseveryone/store"
+	"time"
 )
 
 type TaskType interface {
@@ -28,7 +28,7 @@ type TaskType interface {
 }
 
 type taskType struct {
-	name string
+	name   string
 	cmdStr string
 }
 
@@ -55,7 +55,7 @@ func ListTaskTypes(store gstore.TaskStore) (types []TaskType, err error) {
 			return nil, err
 		}
 		types = append(types, &taskType{
-			name: name,
+			name:   name,
 			cmdStr: cmdStr,
 		})
 	}
@@ -89,7 +89,7 @@ func NewTasks(store gstore.TaskStore) (*tasks, error) {
 		return nil, err
 	}
 	ts := make(map[string]Task)
-	taskNames, err := store.ListTasks()	
+	taskNames, err := store.ListTasks()
 	if err != nil {
 		return nil, err
 	}
@@ -109,9 +109,9 @@ func NewTasks(store gstore.TaskStore) (*tasks, error) {
 		}
 		task := &task{
 			name: taskName,
-			src: src,
-			typ: taskType,
-			dst: dst,
+			src:  src,
+			typ:  taskType,
+			dst:  dst,
 		}
 		times, err := store.ListTaskCompleted(taskName)
 		if err != nil {
@@ -199,19 +199,19 @@ type Task interface {
 }
 
 type task struct {
-	name string
-	typ TaskType
-	src string
-	dst string
+	name          string
+	typ           TaskType
+	src           string
+	dst           string
 	lastCompleted time.Time
 }
 
 func NewTask(name string, typ TaskType, src, dst string) Task {
 	return &task{
 		name: name,
-		typ: typ,
-		src: src,
-		dst: dst,
+		typ:  typ,
+		src:  src,
+		dst:  dst,
 	}
 }
 
@@ -249,9 +249,7 @@ func (this *task) Dst() string {
 func (this *task) LastCompleted() time.Time {
 	return this.lastCompleted
 }
-	
+
 func (this *task) Complete(now time.Time) {
 	this.lastCompleted = now
 }
-
-

@@ -15,11 +15,11 @@
 package location
 
 import (
-	"strings"
 	"fmt"
-	gstore "goodnewseveryone/store"
-	"goodnewseveryone/log"
 	"goodnewseveryone/command"
+	"goodnewseveryone/log"
+	gstore "goodnewseveryone/store"
+	"strings"
 )
 
 type Locations map[string]Location
@@ -30,8 +30,8 @@ type Store interface {
 }
 
 type RemoteLocationType struct {
-	Name string
-	Mount string
+	Name    string
+	Mount   string
 	Unmount string
 }
 
@@ -47,8 +47,8 @@ func ListRemoteLocationTypes(store Store) ([]RemoteLocationType, error) {
 			return nil, err
 		}
 		remotes = append(remotes, RemoteLocationType{
-			Name: t,
-			Mount: mount,
+			Name:    t,
+			Mount:   mount,
 			Unmount: unmount,
 		})
 	}
@@ -160,15 +160,15 @@ type Location interface {
 }
 
 type RemoteLocation struct {
-	Name string
-	Type string
-	IPAddress string
-	Username string
-	Password string
-	Remote string
+	Name        string
+	Type        string
+	IPAddress   string
+	Username    string
+	Password    string
+	Remote      string
 	MountFolder string
-	Mount string
-	Unmount string
+	Mount       string
+	Unmount     string
 }
 
 func NewRemoteLocation(name string, typ string, ipaddress string, username string, password string, remote string, mountFolder string, mount, unmount string) *RemoteLocation {
@@ -241,11 +241,11 @@ func (this *RemoteLocation) delete(store Store) error {
 }
 
 type LocalLocation struct {
-	Name string
+	Name  string
 	Local string
 }
 
-func NewLocalLocation(name, local string) (*LocalLocation) {
+func NewLocalLocation(name, local string) *LocalLocation {
 	return &LocalLocation{name, local}
 }
 

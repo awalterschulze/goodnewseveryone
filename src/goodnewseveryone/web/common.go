@@ -15,15 +15,15 @@
 package web
 
 import (
-	"text/template"
 	"net/http"
+	"text/template"
 )
 
 var (
-	headerTemplate = template.Must(template.New("header").Parse(`<html><title>Good News Everyone</title>`))
+	headerTemplate       = template.Must(template.New("header").Parse(`<html><title>Good News Everyone</title>`))
 	notificationTemplate = template.Must(template.New("notification").Parse(`<div>{{.}}</div>`))
-	errorTemplate = template.Must(template.New("error").Parse(`<div>An error occured: {{.}}</div>`))
-	footerTemplate = template.Must(template.New("footer").Parse(`</html>`))
+	errorTemplate        = template.Must(template.New("error").Parse(`<div>An error occured: {{.}}</div>`))
+	footerTemplate       = template.Must(template.New("footer").Parse(`</html>`))
 )
 
 var (
@@ -40,8 +40,8 @@ const (
 )
 
 type home struct {
-	Min string
-	Max string
+	Min   string
+	Max   string
 	Delay int
 }
 
@@ -62,5 +62,3 @@ func redirectHome(w http.ResponseWriter, r *http.Request) {
 func httpError(w http.ResponseWriter, errString string) {
 	http.Error(w, errString, http.StatusInternalServerError)
 }
-
-

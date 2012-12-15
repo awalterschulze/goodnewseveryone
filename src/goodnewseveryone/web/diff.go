@@ -15,11 +15,11 @@
 package web
 
 import (
-	"text/template"
-	"net/http"
-	"time"
-	"math"
 	goodtime "goodnewseveryone/time"
+	"math"
+	"net/http"
+	"text/template"
+	"time"
 )
 
 func init() {
@@ -67,18 +67,18 @@ func newTimeRange(minTime, maxTime string) (*timeRange, error) {
 	var err error = nil
 	if len(minTime) > 0 {
 		min, err = goodtime.StringToNano(minTime)
-    	if err != nil {
-    		return nil, err
-    	}
-    }
-    max := time.Unix(0, math.MaxInt64)
-    if len(maxTime) > 0 {
-    	max, err = goodtime.StringToNano(minTime)
-    	if err != nil {
-    		return nil, err
-    	}
-    }
-    return &timeRange{min, max}, nil
+		if err != nil {
+			return nil, err
+		}
+	}
+	max := time.Unix(0, math.MaxInt64)
+	if len(maxTime) > 0 {
+		max, err = goodtime.StringToNano(minTime)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &timeRange{min, max}, nil
 }
 
 func (this *timeRange) dur() time.Duration {
@@ -86,11 +86,11 @@ func (this *timeRange) dur() time.Duration {
 }
 
 func (this *timeRange) PreviousMin() string {
-	return goodtime.TimeToString(this.min.Add(-1*this.dur()))
+	return goodtime.TimeToString(this.min.Add(-1 * this.dur()))
 }
 
 func (this *timeRange) PreviousMax() string {
-	return goodtime.TimeToString(this.max.Add(-1*this.dur()))
+	return goodtime.TimeToString(this.max.Add(-1 * this.dur()))
 }
 
 func (this *timeRange) CurrentMin() string {
@@ -110,7 +110,7 @@ func (this *timeRange) NextMax() string {
 }
 
 type DiffContent struct {
-	At time.Time
+	At      time.Time
 	Created []string
 	Deleted []string
 }
@@ -131,29 +131,29 @@ func (this *web) newDiffs(location, minTime, maxTime string) (*diffs, error) {
 	}
 	theDiffs := diffsPerLocation[location]
 	if len(minTime) == 0 && len(theDiffs) > 10 {
-    	t.min = theDiffs[10].Current.Add(-1*time.Nanosecond)
-    }
-    if len(maxTime) == 0 && len(theDiffs) > 0 {
-    	t.max = theDiffs[0].Current.Add(time.Nanosecond)
-    }
-    contents := make([]*DiffContent, 0)
-    for _, d := range theDiffs {
-    	if d.Current.Before(t.max) && d.Current.After(t.min) {
-    		created, deleted, err := d.Take()
-    		if err != nil {
-    			return nil, err
-    		}
-    		contents = append(contents, &DiffContent{
-    			Created: created,
-    			Deleted: deleted,
-    			At: d.Current,
-    		})
-    	}
-    }
-    return &diffs{
-    	timeRange: t,
-    	Contents: contents,
-    }, nil
+		t.min = theDiffs[10].Current.Add(-1 * time.Nanosecond)
+	}
+	if len(maxTime) == 0 && len(theDiffs) > 0 {
+		t.max = theDiffs[0].Current.Add(time.Nanosecond)
+	}
+	contents := make([]*DiffContent, 0)
+	for _, d := range theDiffs {
+		if d.Current.Before(t.max) && d.Current.After(t.min) {
+			created, deleted, err := d.Take()
+			if err != nil {
+				return nil, err
+			}
+			contents = append(contents, &DiffContent{
+				Created: created,
+				Deleted: deleted,
+				At:      d.Current,
+			})
+		}
+	}
+	return &diffs{
+		timeRange: t,
+		Contents:  contents,
+	}, nil
 }
 
 func (this *web) handleDiffs(w http.ResponseWriter, r *http.Request) {

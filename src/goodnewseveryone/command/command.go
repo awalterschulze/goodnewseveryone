@@ -15,14 +15,14 @@
 package command
 
 import (
-	"os/exec"
 	"bufio"
-	"sync"
-	"io"
 	"bytes"
-	"goodnewseveryone/log"
-	"strings"
 	"fmt"
+	"goodnewseveryone/log"
+	"io"
+	"os/exec"
+	"strings"
+	"sync"
 )
 
 func read(log log.Log, w io.Writer, r *bufio.Reader) {
@@ -34,7 +34,7 @@ func read(log log.Log, w io.Writer, r *bufio.Reader) {
 		}
 		log.Output(line)
 		if w != nil {
-			w.Write(line)	
+			w.Write(line)
 		}
 		if err == io.EOF {
 			return
@@ -49,10 +49,10 @@ type Command interface {
 
 type command struct {
 	sync.Mutex
-	name string
-	args []string
+	name         string
+	args         []string
 	censoredArgs bool
-	cmd *exec.Cmd
+	cmd          *exec.Cmd
 }
 
 func NewCommand(f string, args ...string) *command {
@@ -95,7 +95,7 @@ func (this *command) start(log log.Log, output io.Writer) error {
 	this.Lock()
 	defer this.Unlock()
 	if this.censoredArgs {
-		log.Run(this.name, "censored arguments")	
+		log.Run(this.name, "censored arguments")
 	} else {
 		log.Run(this.name, this.args...)
 	}
@@ -104,18 +104,18 @@ func (this *command) start(log log.Log, output io.Writer) error {
 	if err != nil {
 		return err
 	}
-   	stderr, err := this.cmd.StderrPipe()
-   	if err != nil {
-   		return err
-   	}
+	stderr, err := this.cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
 	outbr := bufio.NewReader(stdout)
-   	errbr := bufio.NewReader(stderr)
-   	if err := this.cmd.Start(); err != nil {
-   		return err
-   	}
-   	go read(log, output, outbr)
-   	go read(log, output, errbr)
-   	return nil
+	errbr := bufio.NewReader(stderr)
+	if err := this.cmd.Start(); err != nil {
+		return err
+	}
+	go read(log, output, outbr)
+	go read(log, output, errbr)
+	return nil
 }
 
 func (this *command) Run(log log.Log) ([]byte, error) {
@@ -151,4 +151,3 @@ func NewMount(mount, ipAddress, username, password, remoteLoc, mountLoc string) 
 func NewUnmount(unmount, mountLoc string) *command {
 	return NewCommand(unmount, mountLoc)
 }
-

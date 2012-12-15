@@ -15,18 +15,17 @@
 package location
 
 import (
-	"testing"
-	"goodnewseveryone/files"
 	"fmt"
+	"goodnewseveryone/files"
 	"reflect"
+	"testing"
 )
 
 type loggy struct {
-
 }
 
 func (this *loggy) Write(str string) {
-	fmt.Printf(str+"\n")
+	fmt.Printf(str + "\n")
 }
 
 func (this *loggy) Run(name string, arg ...string) {
@@ -63,15 +62,15 @@ func TestLocations(t *testing.T) {
 	local := &LocalLocation{"LocalName", "LocalLocal"}
 	locations.Add(store, local)
 	remote := &RemoteLocation{
-		Name: "RemoteName",
-		Type: "smb",
-		IPAddress: "192.168.0.1",
-		Username: "walter",
-		Password: "schulze",
-		Remote: "MySharedFolder",
+		Name:        "RemoteName",
+		Type:        "smb",
+		IPAddress:   "192.168.0.1",
+		Username:    "walter",
+		Password:    "schulze",
+		Remote:      "MySharedFolder",
 		MountFolder: "/media",
-		Mount: mount,
-		Unmount: unmount,
+		Mount:       mount,
+		Unmount:     unmount,
 	}
 	locations.Add(store, remote)
 	localEqual, remoteEqual := false, false

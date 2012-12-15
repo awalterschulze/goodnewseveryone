@@ -15,15 +15,15 @@
 package web
 
 import (
-	"text/template"
 	"net/http"
 	"strconv"
+	"text/template"
 	"time"
 )
 
 func init() {
 	http.HandleFunc("/waittime", func(w http.ResponseWriter, r *http.Request) {
-		this.handleWaitTime(w,r)
+		this.handleWaitTime(w, r)
 	})
 }
 
@@ -47,7 +47,7 @@ func (this *web) handleWaitTime(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			invalidMinutesTemplate.Execute(w, minutes)
 		} else {
-			this.gne.SetWaitTime(time.Duration(i)*time.Minute)
+			this.gne.SetWaitTime(time.Duration(i) * time.Minute)
 		}
 	}
 	currentMinutes := int(this.gne.GetWaitTime() / time.Minute)

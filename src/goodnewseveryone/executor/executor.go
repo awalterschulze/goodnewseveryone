@@ -15,14 +15,14 @@
 package executor
 
 import (
-	"sync"
 	"fmt"
-	"goodnewseveryone/kernel"
-	"goodnewseveryone/log"
-	"goodnewseveryone/task"
-	"goodnewseveryone/location"
 	"goodnewseveryone/diff"
+	"goodnewseveryone/kernel"
+	"goodnewseveryone/location"
+	"goodnewseveryone/log"
 	gstore "goodnewseveryone/store"
+	"goodnewseveryone/task"
+	"sync"
 	"time"
 )
 
@@ -37,7 +37,7 @@ type Executor interface {
 type executor struct {
 	sync.Mutex
 	kernel kernel.Kernel
-	busy string
+	busy   string
 }
 
 func NewExecutor(kernel kernel.Kernel) *executor {
@@ -59,7 +59,7 @@ func (this *executor) StopAndBlock(log log.Log) {
 	this.Lock()
 	this.Unlock()
 }
-	
+
 func (this *executor) Unblock() {
 	this.kernel.Unblock()
 }
