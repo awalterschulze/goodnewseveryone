@@ -25,6 +25,9 @@ import (
 
 func TestLocations(t *testing.T) {
 	f := files.NewFiles(".")
+	if err := f.SetMountFolder("/media"); err != nil {
+		panic(err)
+	}
 	gne := NewGNE(f)
 	name := "a"
 	loc := location.NewLocalLocation(name, ".")
@@ -48,6 +51,9 @@ func TestLocations(t *testing.T) {
 	locations = gne.GetLocations()
 	if len(locations) != 0 {
 		t.Fatalf("Expected 0 location, but got %v", len(locations))
+	}
+	if err := f.ResetMountFolder(); err != nil {
+		panic(err)
 	}
 }
 
@@ -104,6 +110,9 @@ func (this *mockTask) Complete(completed time.Time) {
 
 func TestTasks(t *testing.T) {
 	f := files.NewFiles(".")
+	if err := f.SetMountFolder("/media"); err != nil {
+		panic(err)
+	}
 	gne := NewGNE(f)
 	name := "ataskname"
 	cmd := &mockCommand{}
@@ -146,10 +155,16 @@ func TestTasks(t *testing.T) {
 	if err := gne.RemoveLocation(dst); err != nil {
 		panic(err)
 	}
+	if err := f.ResetMountFolder(); err != nil {
+		panic(err)
+	}
 }
 
 func TestDiffs(t *testing.T) {
 	f := files.NewFiles(".")
+	if err := f.SetMountFolder("/media"); err != nil {
+		panic(err)
+	}
 	gne := NewGNE(f)
 	go gne.Start()
 	name := "ataskname"
@@ -193,10 +208,16 @@ func TestDiffs(t *testing.T) {
 	if err := gne.RemoveLocation(dst); err != nil {
 		panic(err)
 	}
+	if err := f.ResetMountFolder(); err != nil {
+		panic(err)
+	}
 }
 
 func TestLogs(t *testing.T) {
 	f := files.NewFiles(".")
+	if err := f.SetMountFolder("/media"); err != nil {
+		panic(err)
+	}
 	gne := NewGNE(f)
 	logs, err := gne.GetLogs()
 	if err != nil {
@@ -207,10 +228,16 @@ func TestLogs(t *testing.T) {
 			panic(err)
 		}
 	}
+	if err := f.ResetMountFolder(); err != nil {
+		panic(err)
+	}
 }
 
 func TestWaitTime(t *testing.T) {
 	f := files.NewFiles(".")
+	if err := f.SetMountFolder("/media"); err != nil {
+		panic(err)
+	}
 	gne := NewGNE(f)
 	go gne.Start()
 	name := "ataskname"
@@ -260,10 +287,19 @@ func TestWaitTime(t *testing.T) {
 	if err := gne.RemoveLocation(dst); err != nil {
 		panic(err)
 	}
+	if err := f.ResetMountFolder(); err != nil {
+		panic(err)
+	}
+	if err := f.ResetWaitTime(); err != nil {
+		panic(err)
+	}
 }
 
 func TestNow(t *testing.T) {
 	f := files.NewFiles(".")
+	if err := f.SetMountFolder("/media"); err != nil {
+		panic(err)
+	}
 	gne := NewGNE(f)
 	go gne.Start()
 	name := "ataskname"
@@ -291,7 +327,7 @@ func TestNow(t *testing.T) {
 	}
 	aftermin := time.After(time.Minute)
 	for i := 0; i < 5; i++ {
-		gne.Now(name)
+		go gne.Now(name)
 		select {
 		case <-aftermin:
 			t.Fatalf("Task %v started to late", i)
@@ -308,10 +344,19 @@ func TestNow(t *testing.T) {
 	if err := gne.RemoveLocation(dst); err != nil {
 		panic(err)
 	}
+	if err := f.ResetMountFolder(); err != nil {
+		panic(err)
+	}
+	if err := f.ResetWaitTime(); err != nil {
+		panic(err)
+	}
 }
 
 func TestBusyWith(t *testing.T) {
 	f := files.NewFiles(".")
+	if err := f.SetMountFolder("/media"); err != nil {
+		panic(err)
+	}
 	gne := NewGNE(f)
 	go gne.Start()
 	name := "ataskname"
@@ -319,6 +364,9 @@ func TestBusyWith(t *testing.T) {
 	cmd := &mockCommand{done}
 	src := "srcname"
 	dst := "dstname"
+	if err := gne.SetWaitTime(time.Hour); err != nil {
+		panic(err)
+	}
 	if err := gne.AddLocation(location.NewLocalLocation(src, ".")); err != nil {
 		panic(err)
 	}
@@ -334,17 +382,17 @@ func TestBusyWith(t *testing.T) {
 	if err := gne.AddTask(task); err != nil {
 		panic(err)
 	}
-	gne.Now(name)
+	go gne.Now(name)
 	time.Sleep(time.Second)
 	busy := gne.BusyWith()
 	if busy != name {
-		t.Fatalf("%v", busy)
+		t.Fatalf("wrong task %v", busy)
 	}
 	<-done
 	time.Sleep(time.Second)
 	busy = gne.BusyWith()
 	if len(busy) > 0 {
-		t.Fatalf("%v", busy)
+		t.Fatalf("busy with %v", busy)
 	}
 	if err := gne.RemoveTask(name); err != nil {
 		panic(err)
@@ -355,10 +403,19 @@ func TestBusyWith(t *testing.T) {
 	if err := gne.RemoveLocation(dst); err != nil {
 		panic(err)
 	}
+	if err := f.ResetMountFolder(); err != nil {
+		panic(err)
+	}
+	if err := f.ResetWaitTime(); err != nil {
+		panic(err)
+	}
 }
 
 func TestBlock(t *testing.T) {
 	f := files.NewFiles(".")
+	if err := f.SetMountFolder("/media"); err != nil {
+		panic(err)
+	}
 	gne := NewGNE(f)
 	go gne.Start()
 	name := "ataskname"
@@ -366,6 +423,9 @@ func TestBlock(t *testing.T) {
 	cmd := &mockCommand{done}
 	src := "srcname"
 	dst := "dstname"
+	if err := gne.SetWaitTime(time.Hour); err != nil {
+		panic(err)
+	}
 	if err := gne.AddLocation(location.NewLocalLocation(src, ".")); err != nil {
 		panic(err)
 	}
@@ -385,7 +445,7 @@ func TestBlock(t *testing.T) {
 	if !gne.Blocked() {
 		t.Fatalf("Expected Blocked")
 	}
-	gne.Now(name)
+	go gne.Now(name)
 	time.Sleep(time.Second)
 	select {
 	default:
@@ -395,7 +455,7 @@ func TestBlock(t *testing.T) {
 	}
 	time.Sleep(time.Second)
 	gne.Unblock()
-	gne.Now(name)
+	go gne.Now(name)
 	time.Sleep(time.Second)
 	<-done
 	if err := gne.RemoveTask(name); err != nil {
@@ -405,6 +465,12 @@ func TestBlock(t *testing.T) {
 		panic(err)
 	}
 	if err := gne.RemoveLocation(dst); err != nil {
+		panic(err)
+	}
+	if err := f.ResetMountFolder(); err != nil {
+		panic(err)
+	}
+	if err := f.ResetWaitTime(); err != nil {
 		panic(err)
 	}
 }

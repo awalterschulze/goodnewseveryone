@@ -17,6 +17,8 @@ package web
 import (
 	"net/http"
 	"text/template"
+	"errors"
+	"fmt"
 )
 
 var (
@@ -57,6 +59,15 @@ func redirectMan(w http.ResponseWriter, r *http.Request) {
 
 func redirectHome(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "../", http.StatusOK)
+}
+
+func formValue(w http.ResponseWriter, r *http.Request, name string) (value string, err error) {
+	value = r.FormValue(name)
+	if len(value) == 0 {
+		err = errors.New(fmt.Sprintf("please fill in %v", name))
+		httpError(w, err.Error())
+	}
+	return value, err
 }
 
 func httpError(w http.ResponseWriter, errString string) {

@@ -93,9 +93,11 @@ type taskSetup struct {
 }
 
 func (this *web) handleRemoveTask(w http.ResponseWriter, r *http.Request) {
-	taskName := r.FormValue("name")
-	err := this.gne.RemoveTask(taskName)
+	taskName, err := formValue(w, r, "name")
 	if err != nil {
+		return
+	}
+	if err := this.gne.RemoveTask(taskName); err != nil {
 		httpError(w, fmt.Sprintf("unable to remove task: %v", err))
 		return
 	}
@@ -118,10 +120,22 @@ func (this *web) handleAddTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (this *web) handleAddTaskCall(w http.ResponseWriter, r *http.Request) {
-	name := r.FormValue("name")
-	typ := r.FormValue("typ")
-	src := r.FormValue("src")
-	dst := r.FormValue("dst")
+	name, err := formValue(w, r, "name")
+	if err != nil {
+		return
+	}
+	typ, err := formValue(w, r, "typ")
+	if err != nil {
+		return
+	}
+	src, err := formValue(w, r, "src")
+	if err != nil {
+		return
+	}
+	dst, err := formValue(w, r, "dst")
+	if err != nil {
+		return
+	}
 	taskTypes, err := this.gne.GetTaskTypes()
 	if err != nil {
 		httpError(w, fmt.Sprintf("unable to add task: %v", err))

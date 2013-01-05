@@ -19,6 +19,7 @@ import (
 	"goodnewseveryone/location"
 	"net/http"
 	"text/template"
+	"path"
 )
 
 func init() {
@@ -44,8 +45,11 @@ var (
 		<div><a href="../man">Back</a></div>
 		<form action="./addlocalcall" method="get">
 			<div>Add Local Location</div>
-			Folder<input type="text" name="local" value=""/>
-			<input type="submit" name="submit" value="AddLocal"/>
+			<table>
+			<tr><td>Name</td><td><input type="text" name="name" value=""/></td></tr>
+			<tr><td>Folder</td><td><input type="text" name="local" value=""/></td></tr>
+			<tr><td><input type="submit" name="submit" value="AddLocal"/></td><td></td></tr>
+			</table>
 		</form>
 	`))
 	addremoteTemplate = template.Must(template.New("addremote").Parse(`
@@ -53,8 +57,9 @@ var (
 		<form action="./addremotecall" method="get">
 			<div>Add Remote Location</div>
 			<table>
+			<tr><td>Name</td><td><input type="text" name="name" value=""/></td></tr>
 			<tr><td>Type</td>
-			<td><select name="typ"> 
+			<td><select name="typ">
 				{{range .}}
         		<option value="{{.Name}}">{{.Name}}</option>
         		{{end}}
@@ -70,15 +75,17 @@ var (
 )
 
 func (this *web) handleRemoveLocation(w http.ResponseWriter, r *http.Request) {
-	locName := r.FormValue("name")
+	locName, err := formValue(w, r, "name")
+	if err != nil {
+		return
+	}
 	locations := this.gne.GetLocations()
 	location, ok := locations[locName]
 	if !ok {
 		httpError(w, "location does not exist")
 		return
 	}
-	err := this.gne.RemoveLocation(location.Id())
-	if err != nil {
+	if err := this.gne.RemoveLocation(location.Id()); err != nil {
 		httpError(w, fmt.Sprintf("unable to remove location: %v", err))
 		return
 	}
@@ -92,11 +99,16 @@ func (this *web) handleAddLocal(w http.ResponseWriter, r *http.Request) {
 }
 
 func (this *web) handleAddLocalCall(w http.ResponseWriter, r *http.Request) {
-	name := r.FormValue("name")
-	local := r.FormValue("local")
-	location := location.NewLocalLocation(name, local)
-	err := this.gne.AddLocation(location)
+	name, err := formValue(w, r, "name")
 	if err != nil {
+		return
+	}
+	local, err := formValue(w, r, "local")
+	if err != nil {
+		return
+	}
+	location := location.NewLocalLocation(name, local)
+	if err := this.gne.AddLocation(location); err != nil {
 		httpError(w, fmt.Sprintf("unable to add local location: %v", err))
 		return
 	}
@@ -115,13 +127,30 @@ func (this *web) handleAddRemote(w http.ResponseWriter, r *http.Request) {
 }
 
 func (this *web) handleAddRemoteCall(w http.ResponseWriter, r *http.Request) {
-	name := r.FormValue("name")
-	typ := r.FormValue("typ")
-	ipaddress := r.FormValue("ipaddress")
+	name, err := formValue(w, r, "name")
+	if err != nil {
+		return
+	}
+	typ, err := formValue(w, r, "typ")
+	if err != nil {
+		return
+	}
+	ipaddress, err := formValue(w, r, "ipaddress")
+	if err != nil {
+		return
+	}
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	remote := r.FormValue("remote")
-	local := r.FormValue("local")
+	remote, err := formValue(w, r, "remote")
+	if err != nil {
+		return
+	}
+	mountLoc, err := this.gne.GetMountFolder()
+	if err != nil {
+		httpError(w, err.Error())
+		return
+	}
+	local := path.Join(mountLoc, name)
 	types, err := this.gne.GetRemoteLocationTypes()
 	if err != nil {
 		httpError(w, fmt.Sprintf("unable to add remote location: %v", err))

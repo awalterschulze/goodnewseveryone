@@ -52,6 +52,8 @@ type GNE interface {
 
 	GetDiffs() (diff.DiffsPerLocation, error)
 
+	GetMountFolder() (string, error)
+
 	Start()
 	End()
 }
@@ -97,6 +99,10 @@ func NewGNE(store gstore.Store) GNE {
 		endChan:   make(chan bool),
 	}
 	return gne
+}
+
+func (this *gne) GetMountFolder() (string, error) {
+	return this.store.GetMountFolder()
 }
 
 func (this *gne) AddLocation(loc location.Location) error {

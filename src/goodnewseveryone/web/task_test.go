@@ -20,16 +20,17 @@ import (
 
 func TestTask(t *testing.T) {
 	w, r := newHandles()
-	r.Form.Set("name", "locname2")
+	name := "locname"
+	r.Form.Set("name", name)
 	r.Form.Set("local", ".")
 	this.handleAddLocalCall(w, r)
 	this.handleAddTask(w, r)
 	r.Form.Set("name", "taskname")
-	r.Form.Set("src", "locname2")
-	r.Form.Set("dst", "locname2")
+	r.Form.Set("src", name)
+	r.Form.Set("dst", name)
 	r.Form.Set("typ", "typname")
 	this.handleAddTaskCall(w, r)
 	this.handleRemoveTask(w, r)
-	r.Form.Set("name", "locname2")
+	r.Form.Set("name", name)
 	this.handleRemoveLocation(w, r)
 }
