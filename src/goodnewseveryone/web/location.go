@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"goodnewseveryone/location"
 	"net/http"
-	"text/template"
 	"path"
+	"text/template"
 )
 
 func init() {

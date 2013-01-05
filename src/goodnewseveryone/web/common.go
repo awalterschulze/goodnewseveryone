@@ -15,10 +15,10 @@
 package web
 
 import (
-	"net/http"
-	"text/template"
 	"errors"
 	"fmt"
+	"net/http"
+	"text/template"
 )
 
 var (
