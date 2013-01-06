@@ -32,7 +32,7 @@ func newWeb(gne gne.GNE) *web {
 	return this
 }
 
-func Serve(gne gne.GNE) {
+func Serve(gne gne.GNE, port string) {
 	this = newWeb(gne)
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":"+port, nil)
 }

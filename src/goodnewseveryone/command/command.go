@@ -56,7 +56,11 @@ type command struct {
 }
 
 func NewCommand(f string, args ...string) *command {
-	c := fmt.Sprintf(f, args)
+	argsinter := make([]interface{}, len(args))
+	for i := range args {
+		argsinter[i] = args[i]
+	}
+	c := fmt.Sprintf(f, argsinter...)
 	ss := strings.Split(c, " ")
 	name := ss[0]
 	a := []string{}

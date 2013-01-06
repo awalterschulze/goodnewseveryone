@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"goodnewseveryone/location"
 	"net/http"
-	"path"
 	"text/template"
 )
 
@@ -150,7 +149,6 @@ func (this *web) handleAddRemoteCall(w http.ResponseWriter, r *http.Request) {
 		httpError(w, err.Error())
 		return
 	}
-	local := path.Join(mountLoc, name)
 	types, err := this.gne.GetRemoteLocationTypes()
 	if err != nil {
 		httpError(w, fmt.Sprintf("unable to add remote location: %v", err))
@@ -163,7 +161,7 @@ func (this *web) handleAddRemoteCall(w http.ResponseWriter, r *http.Request) {
 			unmount = types[i].Unmount
 		}
 	}
-	location := location.NewRemoteLocation(name, typ, ipaddress, username, password, remote, local, mount, unmount)
+	location := location.NewRemoteLocation(name, typ, ipaddress, username, password, remote, mountLoc, mount, unmount)
 	if err := this.gne.AddLocation(location); err != nil {
 		httpError(w, fmt.Sprintf("unable to add remote location: %v", err))
 		return

@@ -17,20 +17,19 @@ package main
 import (
 	"flag"
 	"goodnewseveryone"
+	"goodnewseveryone/files"
 	"goodnewseveryone/web"
 )
 
 //windows 7 registry fix
 //http://alan.lamielle.net/2009/09/03/windows-7-nonpaged-pool-srv-error-2017
 
-var (
-	configLocation = "."
-)
-
 func main() {
 	var configLocation = flag.String("config", ".", "folder where all the config files are located")
+	var port = flag.String("port", "1234", "port on which the web gui will be hosted")
 	flag.Parse()
-	gne := goodnewseveryone.ConfigToGNE(*configLocation)
+	store := files.NewFiles(*configLocation)
+	gne := goodnewseveryone.NewGNE(store)
 	go gne.Start()
-	web.Serve(gne)
+	web.Serve(gne, *port)
 }

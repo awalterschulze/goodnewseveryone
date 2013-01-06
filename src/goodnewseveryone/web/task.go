@@ -26,6 +26,9 @@ func init() {
 	http.HandleFunc("/removetask", func(w http.ResponseWriter, r *http.Request) {
 		this.handleRemoveTask(w, r)
 	})
+	http.HandleFunc("/nowtask", func(w http.ResponseWriter, r *http.Request) {
+		this.handleNowTask(w, r)
+	})
 	http.HandleFunc("/addtask", func(w http.ResponseWriter, r *http.Request) {
 		this.handleAddTask(w, r)
 	})
@@ -101,6 +104,15 @@ func (this *web) handleRemoveTask(w http.ResponseWriter, r *http.Request) {
 		httpError(w, fmt.Sprintf("unable to remove task: %v", err))
 		return
 	}
+	redirectMan(w, r)
+}
+
+func (this *web) handleNowTask(w http.ResponseWriter, r *http.Request) {
+	taskName, err := formValue(w, r, "name")
+	if err != nil {
+		return
+	}
+	go this.gne.Now(taskName)
 	redirectMan(w, r)
 }
 

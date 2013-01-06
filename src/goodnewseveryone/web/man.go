@@ -52,16 +52,26 @@ var (
 		<div>Locations</div>
 		<table>
 		{{range .}}
-		<tr><td><div>{{.Id}}</div></td><td><a href="./removelocation?location={{.Id}}">Remove</a></td></tr>
+		<tr><td><div>{{.Id}}</div></td><td><a href="./removelocation?name={{.Id}}">Remove</a></td></tr>
 		{{end}}
 		</table>
 	`))
 	tasksTemplate = template.Must(template.New("tasks").Parse(`
 		<div>Tasks</div>
 		<table>
-		<tr><td>Task</td><td></td><td>Last Completed Time</td></tr>
+		<tr>
+			<td>Task</td>
+			<td></td>
+			<td>Last Completed Time</td>
+			<td></td>
+		</tr>
 		{{range .}}
-		<tr><td>{{.Name}}</td><td><a href="./removetask?task={{.Name}}">Remove</a></td><td>{{.LastCompleted}}</td></tr>
+		<tr>
+			<td>{{.Name}}</td>
+			<td><a href="./removetask?name={{.Name}}">Remove</a></td>
+			<td>{{.LastCompleted}}</td>
+			<td><a href="./nowtask?name={{.Name}}">Now</a></td>
+		</tr>
 		{{end}}
 		</table>
 	`))
