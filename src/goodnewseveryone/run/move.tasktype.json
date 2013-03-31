@@ -1,1 +1,0 @@
-{"Name":"rsyncmove","TaskType":"rsync -r --remove-source-files %v %v"}

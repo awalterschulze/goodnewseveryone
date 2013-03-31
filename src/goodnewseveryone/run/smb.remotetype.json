@@ -1,1 +1,0 @@
-{"Mount":"mount -o username=%v,password=%v,nounix,noserverino,sec=ntlmssp -t cifs //%v/%v %v","Unmount":"umount -l %v"}
