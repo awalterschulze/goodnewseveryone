@@ -1,0 +1,5 @@
+{	
+	"Name": "winsmb",
+	"Mount":"mount -o username={{.Username}},password={{.Password}},iocharset=utf8,mode=0777,file_mode=0777 -t cifs //{{.IPAddress}}/{{.Remote}} {{.Local}}",
+	"Unmount":"umount -l {{.Local}}"
+}
