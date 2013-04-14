@@ -129,7 +129,7 @@ func (loc *Location) Prepare() {
 	}
 	lsoutput, err := run("ls", loc.Local)
 	if err != nil || strings.Contains(string(lsoutput), "No such file or directory") {
-		if _, err := run("mkdir", loc.Local); err != nil {
+		if _, err := run("mkdir", "-p", loc.Local); err != nil {
 			panic(err)
 		}
 	}
