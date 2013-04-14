@@ -107,7 +107,8 @@ func executeTemplate(glob string, data interface{}) string {
 }
 
 type Location struct {
-	Type      string
+	Mount     string
+	Unmount   string
 	IPAddress string
 	Username  string
 	Password  string
@@ -115,99 +116,72 @@ type Location struct {
 	Local     string
 }
 
-func (this *Location) String() string {
-	if len(this.Remote) == 0 {
-		return this.Local
+func (loc *Location) String() string {
+	if len(loc.Remote) == 0 {
+		return loc.Local
 	}
-	return fmt.Sprintf("%v://%v/%v", this.Type, this.IPAddress, this.Remote)
+	return fmt.Sprintf("%v/%v", loc.IPAddress, loc.Remote)
 }
 
-func (this *Location) Prepare() {
-	if len(this.Remote) == 0 {
+func (loc *Location) Prepare() {
+	if len(loc.Remote) == 0 {
 		return
 	}
-	lsoutput, err := run("ls", this.Local)
+	lsoutput, err := run("ls", loc.Local)
 	if err != nil || strings.Contains(string(lsoutput), "No such file or directory") {
-		if _, err := run("mkdir", this.Local); err != nil {
+		if _, err := run("mkdir", loc.Local); err != nil {
 			panic(err)
 		}
 	}
 }
 
-type LocationType struct {
-	Name    string
-	Mount   string
-	Unmount string
-}
-
-func (this *LocationType) GetMount(loc *Location) string {
+func (loc *Location) GetMount() string {
 	if len(loc.Remote) == 0 {
 		return ""
 	}
-	return executeTemplate(this.Mount, loc)
+	return executeTemplate(loc.Mount, loc)
 }
 
-func (this *LocationType) GetUnmount(loc *Location) string {
+func (loc *Location) GetUnmount() string {
 	if len(loc.Remote) == 0 {
 		return ""
 	}
-	return executeTemplate(this.Unmount, loc)
-}
-
-type LocationTypes []*LocationType
-
-func (this LocationTypes) Get(loc *Location) (mount, unmount string) {
-	for i := range this {
-		if loc.Type == this[i].Name {
-			return this[i].GetMount(loc), this[i].GetUnmount(loc)
-		}
-	}
-	panic(fmt.Sprint("unkown locationType %v", loc.Type))
+	return executeTemplate(loc.Unmount, loc)
 }
 
 type GoodNews struct {
-	News       *News
-	Src        string
-	SrcMount   string
-	SrcUnmount string
-	Dst        string
-	DstMount   string
-	DstUnmount string
-}
-
-func MakeItGoodNews(locationTypes LocationTypes, news *News) *GoodNews {
-	srcMount, srcUnmount := locationTypes.Get(news.Src)
-	dstMount, dstUnmount := locationTypes.Get(news.Dst)
-	return &GoodNews{news, news.Src.Local, srcMount, srcUnmount, news.Dst.Local, dstMount, dstUnmount}
+	Src  *Location
+	Dst  *Location
+	Task string
 }
 
 func (good *GoodNews) Everyone() error {
-	task := executeTemplate(good.News.Task, good)
-	run(good.SrcUnmount)
-	run(good.DstUnmount)
-	good.News.Src.Prepare()
-	good.News.Dst.Prepare()
-	if _, err := run(good.SrcMount); err != nil {
+	task := executeTemplate(good.Task, good)
+	run(good.Src.GetUnmount())
+	run(good.Dst.GetUnmount())
+	good.Src.Prepare()
+	good.Dst.Prepare()
+	if _, err := run(good.Src.GetMount()); err != nil {
 		panic(err)
 	}
-	defer run(good.SrcUnmount)
-	if _, err := run(good.DstMount); err != nil {
+	defer run(good.Src.GetUnmount())
+	if _, err := run(good.Dst.GetMount()); err != nil {
 		panic(err)
 	}
-	defer run(good.DstUnmount)
-	srcPrevList := createFilelist(good.Src)
-	dstPrevList := createFilelist(good.Dst)
+	defer run(good.Dst.GetUnmount())
+	srcPrevList := createFilelist(good.Src.Local)
+	dstPrevList := createFilelist(good.Dst.Local)
 	defer func() {
-		srcNextList := createFilelist(good.Src)
-		dstNextList := createFilelist(good.Dst)
+		srcNextList := createFilelist(good.Src.Local)
+		dstNextList := createFilelist(good.Dst.Local)
 		srcCreated, srcDeleted := diff(srcPrevList, srcNextList)
 		dstCreated, dstDeleted := diff(dstPrevList, dstNextList)
-		fmt.Printf("Diff at %v\n", good.News.Src)
+		fmt.Printf("Diff at %v\n", good.Src.Local)
 		fmt.Printf("============================\n")
 		fmt.Printf("%v\n", strings.Join(srcCreated, "\n"))
 		fmt.Printf("%v\n", strings.Join(srcDeleted, "\n"))
 		fmt.Printf("============================\n")
-		fmt.Printf("Diff at %v\n", good.News.Dst)
+		fmt.Printf("Diff at %v\n", good.Dst.Local)
 		fmt.Printf("============================\n")
 		fmt.Printf("%v\n", strings.Join(dstCreated, "\n"))
 		fmt.Printf("%v\n", strings.Join(dstDeleted, "\n"))
@@ -217,16 +191,11 @@ func (good *GoodNews) Everyone() error {
 	return err
 }
 
-type News struct {
-	Src  *Location
-	Dst  *Location
-	Task string
-}
-
 func exampleNews() {
-	data, err := json.MarshalIndent(&News{
+	data, err := json.MarshalIndent(&GoodNews{
 		Src: &Location{
-			Type:      "smbtest",
+			Mount:     "mount -o port=6553,guest -t cifs //{{.IPAddress}}/{{.Remote}} {{.Local}}",
+			Unmount:   "umount -l {{.Local}}",
 			IPAddress: "localhost",
 			Username:  "",
 			Password:  "",
@@ -236,7 +205,7 @@ func exampleNews() {
 		Dst: &Location{
 			Local: "./testlocal/",
 		},
-		Task: "rsync -r {{.Src}} {{.Dst}}",
+		Task: "rsync -r {{.Src.Local}} {{.Dst.Local}}",
 	}, "", "\t")
 	if err != nil {
 		panic(err)
@@ -244,31 +213,9 @@ func exampleNews() {
 	fmt.Printf("%v\n", string(data))
 }
 
-func configLocationTypes(configFolder string) LocationTypes {
-	matches, err := filepath.Glob(configFolder + "*.location.json")
-	if err != nil {
-		panic(err)
-	}
-	locations := make(LocationTypes, len(matches))
-	for i, m := range matches {
-		data, err := ioutil.ReadFile(m)
-		if err != nil {
-			panic(err)
-		}
-		t := LocationType{}
-		if err := json.Unmarshal(data, &t); err != nil {
-			panic(err)
-		}
-		locations[i] = &t
-	}
-	return locations
-}
-
 func main() {
 	var example bool
 	flag.BoolVar(&example, "example", false, "example input folder")
-	var configFolder string
-	flag.StringVar(&configFolder, "config", "./", "location of config files")
 	flag.Parse()
 	if example {
 		exampleNews()
@@ -278,12 +225,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	news := &News{}
-	if err := json.Unmarshal(data, news); err != nil {
+	goodnews := &GoodNews{}
+	if err := json.Unmarshal(data, goodnews); err != nil {
 		panic(err)
 	}
-	locationTypes := configLocationTypes(configFolder)
-	goodnews := MakeItGoodNews(locationTypes, news)
 	if err := goodnews.Everyone(); err != nil {
 		panic(err)
 	}

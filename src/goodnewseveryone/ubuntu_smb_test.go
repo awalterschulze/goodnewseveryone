@@ -105,10 +105,10 @@ func testSamba() error {
 	}
 	localFiles := createFilelist(testLocal)
 	if len(localFiles) != 2 {
-		return errors.New(fmt.Sprintf("lcoal should contain one file, but contains %v", localFiles))
+		return errors.New(fmt.Sprintf("local should contain one file, but contains %v", localFiles))
 	}
 	if strings.Contains(localFiles[1], thefile) {
-		return errors.New(fmt.Sprintf("Expected %v, but got %v", thefile, localFiles[1]))
+		return errors.New(fmt.Sprintf("want %v got %v", thefile, localFiles[1]))
 	}
 	return nil
 }

@@ -23,7 +23,7 @@ import (
 
 func main() {
 	ip := os.Args[1]
-	c := exec.Command("nmap", "-sP", ip)
+	c := exec.Command("nmap", "-NP", ip)
 	d, err := c.CombinedOutput()
 	if err != nil {
 		panic(err)
