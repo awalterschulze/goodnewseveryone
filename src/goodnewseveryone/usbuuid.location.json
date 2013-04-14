@@ -1,5 +1,0 @@
-{	
-	"Name": "usbuuid",
-	"Mount":"mount -t ntfs-3g UUID=\"{{.Remote}}\" {{.Local}}",
-	"Unmount":"umount -l {{.Local}}"
-}

@@ -1,5 +1,0 @@
-{	
-	"Name": "smb",
-	"Mount":"mount -o username={{.Username}},password={{.Password}},nounix,noserverino,sec=ntlmssp -t cifs //{{.IPAddress}}/{{.Remote}} {{.Local}}",
-	"Unmount":"umount -l {{.Local}}"
-}

@@ -1,5 +1,0 @@
-{	
-	"Name": "smbtest",
-	"Mount":"mount -o port=6553,guest -t cifs //{{.IPAddress}}/{{.Remote}} {{.Local}}",
-	"Unmount":"umount -l {{.Local}}"
-}

@@ -1,5 +1,0 @@
-{	
-	"Name": "ftp",
-	"Mount":"curlftpfs {{.Username}}:{{.Password}}@{{.IPAddress}}/{{.Remote}} {{.Local}}",
-	"Unmount":"fusermount -u {{.Local}}"
-}
